@@ -13,71 +13,232 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        
+        * {
+            box-sizing: border-box;
+        }
         body {
             margin: 0;
             padding: 0;
             overflow: hidden;
-            background: #111;
+            background: #0d0d11;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #ededed;
         }
         canvas {
             display: block;
+            cursor: crosshair;
         }
-        #ui {
+        
+        /* Top Navigation Header */
+        #top-bar {
             position: absolute;
-            bottom: 30px;
+            top: 18px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            pointer-events: none;
+        }
+        .header-pill {
+            pointer-events: auto;
+            background: rgba(14, 14, 18, 0.78);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 18px;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+        }
+        .brand-title {
+            font-family: 'Cinzel', serif;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            color: #f5f5f7;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .brand-badge {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #d1d1d6;
+            padding: 3px 8px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: auto;
+        }
+        
+        .action-btn {
+            background: rgba(18, 18, 24, 0.78);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #e2e2e8;
+            padding: 8px 14px;
+            border-radius: 14px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            white-space: nowrap;
+        }
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.28);
+            transform: translateY(-1px);
+        }
+        .action-btn.active {
+            background: #ffffff;
+            color: #0d0d11;
+            border-color: #ffffff;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.35);
+        }
+        
+        /* Bottom Gallery Island */
+        #bottom-island {
+            position: absolute;
+            bottom: 24px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 12px;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 10px 20px;
-            border-radius: 30px;
-            backdrop-filter: blur(8px);
-            font-family: sans-serif;
-            z-index: 10;
-            width: 80%;
-            max-width: 800px;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            z-index: 100;
+            width: 95%;
+            max-width: 1040px;
+            pointer-events: none;
         }
+        
+        .studio-bar {
+            pointer-events: auto;
+            background: rgba(14, 14, 19, 0.84);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 24px;
+            padding: 7px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+            max-width: 100%;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .studio-bar::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .segmented-group {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 3px;
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.07);
+        }
+        
         .preset-btn {
-            background: none;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: rgba(255, 255, 255, 0.7);
-            padding: 8px 16px;
-            border-radius: 20px;
+            background: transparent;
+            border: 1px solid transparent;
+            color: #a1a1aa;
+            padding: 6px 12px;
+            border-radius: 14px;
             cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 14px;
+            transition: all 0.18s ease;
+            font-size: 12px;
+            font-weight: 500;
             outline: none;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
         }
         .preset-btn:hover {
-            color: #fff;
-            border-color: rgba(255, 255, 255, 0.5);
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.08);
         }
         .preset-btn.active {
-            background: rgba(255, 255, 255, 0.9);
-            color: #000;
-            border-color: #fff;
+            background: #ffffff;
+            color: #09090b;
+            font-weight: 600;
+            border-color: #ffffff;
+            box-shadow: 0 2px 10px rgba(255, 255, 255, 0.25);
         }
+        
+        .divider {
+            width: 1px;
+            height: 22px;
+            background: rgba(255, 255, 255, 0.14);
+            margin: 0 2px;
+            flex-shrink: 0;
+        }
+        
+        /* Modal & Dialog Styling */
+        .atelier-dialog {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(16, 16, 22, 0.96);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            padding: 26px 26px 22px;
+            border-radius: 24px;
+            text-align: center;
+            z-index: 300;
+            box-shadow: 0 30px 70px rgba(0,0,0,0.85);
+            border: 1px solid rgba(255,255,255,0.16);
+            max-width: 460px;
+            width: 92vw;
+            color: #f1f1f5;
+        }
+        
         #toast-banner {
             position: absolute;
             top: 24px;
             left: 50%;
             transform: translateX(-50%) translateY(-100px);
-            background: rgba(20, 20, 24, 0.95);
-            color: #f1f1f1;
-            padding: 12px 24px;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            font-size: 14px;
+            background: rgba(18, 18, 24, 0.94);
+            backdrop-filter: blur(16px);
+            color: #f5f5f7;
+            padding: 11px 22px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            box-shadow: 0 14px 36px rgba(0, 0, 0, 0.6);
+            font-size: 13px;
+            font-weight: 500;
             display: flex;
             align-items: center;
             gap: 10px;
-            z-index: 150;
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+            z-index: 350;
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
             opacity: 0;
             pointer-events: none;
             max-width: 90vw;
@@ -88,62 +249,307 @@
             opacity: 1;
             pointer-events: auto;
         }
+        
+        /* Floating Canvas HUD Overlay */
+        #canvas-hud {
+            position: absolute;
+            top: 80px;
+            left: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            pointer-events: none;
+            z-index: 50;
+        }
+        .hud-item {
+            font-size: 11px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.45);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.35);
+            padding: 4px 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(8px);
+            width: fit-content;
+        }
     </style>
 </head>
 <body>
+
 <div id="toast-banner">
     <span id="toast-icon">ℹ️</span>
     <span id="toast-message">Notification</span>
 </div>
-<div id="ui">
-    <button class="preset-btn active" onclick="setAnimal('unicorn')">Unicorn</button>
-    <button class="preset-btn" onclick="setAnimal('cat')">Cat</button>
-    <button class="preset-btn" onclick="setAnimal('bird')">Bird</button>
-    <button class="preset-btn" onclick="setAnimal('dog')">Dog</button>
-    <button class="preset-btn" onclick="setAnimal('elephant')">Elephant</button>
-    <button class="preset-btn" onclick="setAnimal('horse')">Horse</button>
-    <button class="preset-btn" onclick="setAnimal('rabbit')">Rabbit</button>
-    <button class="preset-btn" onclick="setAnimal('butterfly')">Butterfly</button>
-    <button class="preset-btn" onclick="setAnimal('dolphin')">Dolphin</button>
-    <button class="preset-btn" onclick="setAnimal('bear')">Bear</button>
-    <div style="width: 1px; background: rgba(255,255,255,0.2); margin: 0 4px;"></div>
-    <button class="preset-btn" id="btn-freehand" onclick="setMode('freehand')">Freehand</button>
-    <button class="preset-btn" id="btn-remote" onclick="toggleRemoteQR()">Connect iPhone</button>
-    <button class="preset-btn" id="btn-clear" onclick="clearFreehand()" style="display:none; background: rgba(255, 50, 50, 0.2);">Clear</button>
-</div>
 
-<div id="qr-container" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(255,255,255,0.9); padding:20px; border-radius:20px; text-align:center; font-family:sans-serif; z-index:20;">
-    <h3 style="margin-top:0; color:#000;">Scan to sketch with iPhone</h3>
-    <canvas id="qrcode"></canvas>
-    <p style="margin-bottom:0; color:#333; font-size:14px;">Use your phone as a trackpad.</p>
-    <button onclick="toggleRemoteQR()" style="margin-top:15px; padding:8px 16px; border:none; background:#333; color:white; border-radius:10px; cursor:pointer;">Close</button>
-</div>
-
-<div id="mobile-remote" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:#111; z-index:100; color:white; font-family:sans-serif; flex-direction:column; align-items:center; justify-content:center; touch-action:none;">
-    <h2>Charcoal Remote</h2>
-    
-    <div id="permission-view" style="display:flex; flex-direction:column; align-items:center; gap:20px;">
-        <p style="text-align:center; max-width:80%; color:#ccc;">To enable Gyroscope and Breath interactions, please allow sensor access.</p>
-        <button onclick="requestPermissions()" style="padding: 15px 30px; border-radius: 30px; background: rgba(255, 255, 255, 0.9); color: black; border: none; font-size: 18px; font-weight:bold;">Enable Sensors & Mic</button>
-        <button onclick="showPad()" style="padding: 10px 20px; border-radius: 30px; background: transparent; color: #888; border: 1px solid #555; font-size: 14px;">Skip for now</button>
-    </div>
-
-    <div id="pad-view" style="display:none; flex-direction:column; align-items:center; width:100%;">
-        <div style="width: 80vw; height: 60vh; border: 2px dashed rgba(255,255,255,0.3); border-radius: 20px; display: flex; align-items:center; justify-content:center; text-align:center; padding: 20px; margin-bottom: 20px;" id="touch-pad">
-            <span style="pointer-events:none; color:#777;">
-                • Drag to draw<br>
-                • Use 2 fingers to smudge<br>
-                • Tilt phone to angle chalk<br>
-                • Blow into mic to scatter dust
-            </span>
+<!-- Top Navigation Atelier Bar -->
+<div id="top-bar">
+    <div class="header-pill">
+        <div class="brand-title">
+            <span>✧</span> Charcoal Atelier
         </div>
-        <button onclick="sendClearEvent()" style="padding: 15px 30px; border-radius: 30px; background: rgba(255, 50, 50, 0.5); color: white; border: none; font-size: 18px;">Clear Canvas</button>
+        <div class="brand-badge" id="paper-badge">Archival Cotton 300g</div>
+    </div>
+    
+    <div class="header-actions">
+        <button class="action-btn" id="btn-remote" onclick="toggleRemoteQR()">
+            <span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:#22c55e; box-shadow:0 0 8px #22c55e;" id="remote-dot"></span>
+            <span>📱 Connect Stylus</span>
+        </button>
+        <button class="action-btn" id="btn-audio-toggle" onclick="toggleAudioMute()">
+            <span id="audio-icon">🔊</span>
+            <span id="audio-label">Sound ON</span>
+        </button>
+        <button class="action-btn" id="btn-cocreate" onclick="toggleCoCreate()">
+            <span>✨</span> Jazz Duet: OFF
+        </button>
+        <button class="action-btn" id="btn-camera" onclick="toggleCamera()">
+            <span>📷</span> Camera Gestures
+        </button>
+        <button class="action-btn" onclick="toggleShortcutsModal()" title="View Shortcuts">
+            <span>⌨️</span>
+        </button>
+        <button class="action-btn" onclick="exportArtworkPNG()" title="Export PNG Artwork" style="background: rgba(255,255,255,0.12);">
+            <span>💾</span> Export
+        </button>
     </div>
 </div>
 
-<div id="experimental-ui" style="position: absolute; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 10;">
-    <button class="preset-btn" id="btn-cocreate" onclick="toggleCoCreate()" style="background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);">Jazz Co-Create: OFF</button>
-    <button class="preset-btn" id="btn-camera" onclick="toggleCamera()" style="background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);">Camera Draw</button>
+<!-- Floating Canvas Guidance HUD -->
+<div id="canvas-hud">
+    <div class="hud-item" id="hud-mode-tip">🖱️ Click & drag to sketch charcoal • Move mouse to shift light</div>
+    <div class="hud-item" id="hud-phone-tip" style="display:none;">📱 Spatial Phone Stylus: Aim in air & hold trigger</div>
+</div>
+
+<!-- Bottom Gallery Studio Toolbar -->
+<div id="bottom-island">
+    <div class="studio-bar">
+        
+        <!-- Mode Switcher -->
+        <div class="segmented-group">
+            <button class="preset-btn active" id="mode-tab-preset" onclick="setAppModeView('preset')">
+                <span>✦</span> Preset Art
+            </button>
+            <button class="preset-btn" id="mode-tab-freehand" onclick="setAppModeView('freehand')">
+                <span>✏️</span> Freehand
+            </button>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <!-- Animals / Silhouettes presets (Visible in Preset mode) -->
+        <div class="segmented-group" id="preset-subjects-group">
+            <button class="preset-btn active" onclick="setAnimal('unicorn')">Unicorn</button>
+            <button class="preset-btn" onclick="setAnimal('cat')">Cat</button>
+            <button class="preset-btn" onclick="setAnimal('bird')">Bird</button>
+            <button class="preset-btn" onclick="setAnimal('dog')">Dog</button>
+            <button class="preset-btn" onclick="setAnimal('elephant')">Elephant</button>
+            <button class="preset-btn" onclick="setAnimal('horse')">Horse</button>
+            <button class="preset-btn" onclick="setAnimal('rabbit')">Rabbit</button>
+            <button class="preset-btn" onclick="setAnimal('butterfly')">Butterfly</button>
+            <button class="preset-btn" onclick="setAnimal('dolphin')">Dolphin</button>
+            <button class="preset-btn" onclick="setAnimal('bear')">Bear</button>
+        </div>
+        
+        <!-- Freehand Studio Tools (Active in Freehand mode) -->
+        <div class="segmented-group" id="freehand-tools-group" style="display:none;">
+            <button class="preset-btn" onclick="triggerManualSmudge()" title="Blend charcoal particles">
+                <span>💨</span> Smudge
+            </button>
+            <button class="preset-btn" onclick="triggerBlowDust()" title="Blow charcoal dust">
+                <span>🌬️</span> Blow Dust
+            </button>
+            <button class="preset-btn" onclick="cyclePaperGrain()" id="btn-paper-cycle" title="Change paper tooth">
+                <span>📄</span> Paper: Cold-Pressed
+            </button>
+            <button class="preset-btn" onclick="undoLastStroke()" title="Undo last stroke (Ctrl+Z)">
+                <span>↩️</span> Undo
+            </button>
+            <button class="preset-btn" onclick="clearFreehand()" style="color:#fca5a5;" title="Clear canvas">
+                <span>🗑️</span> Clear
+            </button>
+        </div>
+        
+    </div>
+</div>
+
+<!-- Shortcuts Modal Dialog -->
+<div id="shortcuts-dialog" class="atelier-dialog">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h3 style="margin:0; font-family:'Cinzel', serif; font-size:18px; font-weight:700; color:#fff; display:flex; align-items:center; gap:8px;">
+            <span>⌨️</span> Atelier Shortcuts & Gestures
+        </h3>
+        <button onclick="toggleShortcutsModal()" style="background:none; border:none; color:#888; font-size:20px; cursor:pointer; padding:4px 8px; border-radius:8px; line-height:1;">✕</button>
+    </div>
+    
+    <div style="text-align:left; font-size:13px; color:#ccc; display:flex; flex-direction:column; gap:10px; line-height:1.5;">
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:6px;">
+            <span><kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">Click + Drag</kbd></span>
+            <span style="color:#aaa;">Draw charcoal stroke</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:6px;">
+            <span><kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">Right Click / S</kbd></span>
+            <span style="color:#aaa;">Smudge nearby carbon</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:6px;">
+            <span><kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">B / Space</kbd></span>
+            <span style="color:#aaa;">Blow loose carbon dust</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:6px;">
+            <span><kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">Ctrl + Z</kbd></span>
+            <span style="color:#aaa;">Undo last stroke</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:6px;">
+            <span><kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">C</kbd></span>
+            <span style="color:#aaa;">Clear canvas</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:6px;">
+            <span><kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">E</kbd></span>
+            <span style="color:#aaa;">Export artwork as PNG</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding-top:2px;">
+            <span><kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">📱 Air Wand</kbd></span>
+            <span style="color:#aaa;">Wave phone in 3D air to sketch</span>
+        </div>
+    </div>
+    
+    <div style="margin-top:18px;">
+        <button onclick="toggleShortcutsModal()" style="width:100%; padding:10px 16px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.1); color:#fff; border-radius:12px; cursor:pointer; font-size:13px; font-weight:600;">Done</button>
+    </div>
+</div>
+
+<div id="qr-container" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(18, 18, 22, 0.96); padding:24px 24px 20px; border-radius:24px; text-align:center; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; z-index:200; box-shadow:0 24px 60px rgba(0,0,0,0.85); border:1px solid rgba(255,255,255,0.15); max-width:440px; width:90vw; color:#f0f0f0;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3 style="margin:0; font-size:17px; font-weight:600; color:#fff; display:flex; align-items:center; gap:8px;">
+            <span>📱</span> Connect Phone as Charcoal Stylus
+        </h3>
+        <button onclick="toggleRemoteQR()" style="background:none; border:none; color:#888; font-size:20px; cursor:pointer; padding:4px 8px; border-radius:8px; line-height:1;" title="Close">✕</button>
+    </div>
+    
+    <p style="margin:0 0 16px; color:#aaa; font-size:13px; line-height:1.4;">
+        Use your mobile phone as a wireless trackpad, tilt the chalk, smudge with two fingers, and blow into the mic to blow charcoal dust!
+    </p>
+
+    <!-- Normal Link Section with 1-Click Copy -->
+    <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:12px; margin-bottom:16px; text-align:left;">
+        <label style="display:block; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:#888; margin-bottom:6px;">Direct Link for Phone</label>
+        <div style="display:flex; gap:8px;">
+            <input id="remote-url-input" type="text" readonly style="flex:1; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:8px 12px; border-radius:8px; font-size:12px; font-family:monospace; outline:none; text-overflow:ellipsis;" value="">
+            <button id="btn-copy-link" onclick="copyRemoteLink()" style="background:#fff; color:#000; border:none; padding:8px 14px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; transition:all 0.2s ease;">📋 Copy</button>
+        </div>
+        <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
+            <a id="remote-open-link" href="#" target="_blank" style="font-size:12px; color:#60a5fa; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                <span>↗</span> Open Remote in New Tab
+            </a>
+            <span style="font-size:11px; color:#777;">Works in any browser</span>
+        </div>
+    </div>
+
+    <!-- QR Code Section -->
+    <div style="background:#fff; padding:12px; border-radius:16px; display:inline-block; margin-bottom:14px; box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+        <canvas id="qrcode" style="display:block; width:160px; height:160px;"></canvas>
+    </div>
+
+    <div>
+        <button onclick="toggleRemoteQR()" style="width:100%; padding:10px 16px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.08); color:#ddd; border-radius:12px; cursor:pointer; font-size:13px; font-weight:500;">Close</button>
+    </div>
+</div>
+
+<div id="mobile-remote" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#0e0e12; z-index:1000; color:white; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; flex-direction:column; align-items:center; justify-content:space-between; touch-action:none; overflow:hidden; user-select:none; -webkit-user-select:none;">
+    
+    <!-- Top Header -->
+    <div style="width:100%; padding:14px 18px; display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); border-bottom:1px solid rgba(255,255,255,0.08); box-sizing:border-box;">
+        <div style="display:flex; align-items:center; gap:8px;">
+            <div style="width:8px; height:8px; border-radius:50%; background:#22c55e; box-shadow:0 0 8px #22c55e;"></div>
+            <span style="font-size:14px; font-weight:600; letter-spacing:0.5px;">Charcoal Stylus</span>
+        </div>
+        <div id="remote-conn-status" style="font-size:11px; color:#888; background:rgba(255,255,255,0.08); padding:3px 8px; border-radius:12px;">Connected</div>
+    </div>
+    
+    <!-- Permission View -->
+    <div id="permission-view" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:24px; text-align:center; flex:1; max-width:360px;">
+        <div style="width:64px; height:64px; border-radius:50%; background:rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:center; font-size:30px; margin-bottom:6px;">🪄</div>
+        <h3 style="margin:0; font-size:20px; font-weight:600;">Enable Motion & Gyro</h3>
+        <p style="margin:0; color:#aaa; font-size:13px; line-height:1.5;">To draw by waving your phone in the air and blowing into the mic, please allow motion sensors and microphone access.</p>
+        <button onclick="requestPermissions()" style="width:100%; padding:14px 20px; border-radius:16px; background:#fff; color:#000; border:none; font-size:15px; font-weight:700; cursor:pointer; box-shadow:0 8px 24px rgba(255,255,255,0.2);">Enable Sensors & Mic</button>
+        <button onclick="showPad()" style="padding:8px 16px; border-radius:12px; background:transparent; color:#777; border:1px solid rgba(255,255,255,0.15); font-size:12px; cursor:pointer;">Skip (Touch Only)</button>
+    </div>
+
+    <!-- Active Remote Controller View -->
+    <div id="pad-view" style="display:none; flex-direction:column; align-items:center; width:100%; flex:1; justify-content:space-between; padding:12px 16px 20px; box-sizing:border-box;">
+        
+        <!-- Mode Switcher -->
+        <div style="display:flex; width:100%; max-width:380px; background:rgba(255,255,255,0.08); border-radius:14px; padding:3px; gap:4px;">
+            <button id="tab-air-wand" onclick="setRemoteMode('air')" style="flex:1; padding:9px 12px; border-radius:11px; border:none; background:#fff; color:#000; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:all 0.2s ease;">
+                <span>🪄</span> Move Phone (Air)
+            </button>
+            <button id="tab-trackpad" onclick="setRemoteMode('pad')" style="flex:1; padding:9px 12px; border-radius:11px; border:none; background:transparent; color:#888; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:all 0.2s ease;">
+                <span>✍️</span> Touch Pad
+            </button>
+        </div>
+
+        <!-- 1. AIR WAND MODE PANEL -->
+        <div id="air-wand-panel" style="display:flex; flex-direction:column; align-items:center; width:100%; max-width:380px; flex:1; justify-content:space-evenly; gap:12px; padding:8px 0;">
+            
+            <!-- Gyro Horizon Visualizer -->
+            <div id="air-horizon" style="position:relative; width:120px; height:120px; border-radius:50%; background:radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 70%); border:1.5px solid rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; overflow:hidden; box-shadow:inset 0 0 20px rgba(0,0,0,0.5);">
+                <div id="horizon-line" style="position:absolute; width:100%; height:1.5px; background:rgba(255,255,255,0.25); transform:rotate(0deg);"></div>
+                <div id="crosshair-dot" style="width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 0 12px #fff; transform:translate(0px, 0px); transition:transform 0.05s ease-out;"></div>
+                <div id="air-state-label" style="position:absolute; bottom:6px; font-size:9px; text-transform:uppercase; letter-spacing:0.5px; color:#888;">Aiming</div>
+            </div>
+
+            <!-- Sensitivity & Recenter Controls -->
+            <div style="display:flex; width:100%; justify-content:space-between; align-items:center; gap:8px;">
+                <button onclick="recenterAirWand()" style="flex:1; padding:8px 12px; border-radius:10px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); color:#eee; font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px;">
+                    <span>🎯</span> Recenter Aim
+                </button>
+                <div style="display:flex; background:rgba(255,255,255,0.06); border-radius:10px; padding:2px; border:1px solid rgba(255,255,255,0.1);">
+                    <button id="sens-08" onclick="setSensitivity(0.85)" style="padding:6px 9px; border-radius:8px; border:none; background:transparent; color:#888; font-size:11px; font-weight:600; cursor:pointer;">Gentle</button>
+                    <button id="sens-13" onclick="setSensitivity(1.35)" style="padding:6px 9px; border-radius:8px; border:none; background:#fff; color:#000; font-size:11px; font-weight:700; cursor:pointer;">Normal</button>
+                    <button id="sens-22" onclick="setSensitivity(2.2)" style="padding:6px 9px; border-radius:8px; border:none; background:transparent; color:#888; font-size:11px; font-weight:600; cursor:pointer;">Agile</button>
+                </div>
+            </div>
+
+            <!-- BIG TACTILE TRIGGER PAD -->
+            <div id="air-trigger-btn" style="width:100%; height:130px; border-radius:24px; background:linear-gradient(145deg, rgba(255,255,255,0.14), rgba(255,255,255,0.04)); border:2px solid rgba(255,255,255,0.25); display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; transition:all 0.15s ease; box-shadow:0 8px 30px rgba(0,0,0,0.4); text-align:center; padding:12px; box-sizing:border-box;">
+                <div style="font-size:26px; margin-bottom:4px;" id="trigger-icon">🖐️</div>
+                <div style="font-size:15px; font-weight:700; color:#fff;" id="trigger-text">HOLD THUMB TO DRAW</div>
+                <div style="font-size:11px; color:#888; margin-top:2px;">Wave phone in the air to paint strokes</div>
+            </div>
+
+            <!-- Toggle Always Draw -->
+            <div style="display:flex; width:100%; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:8px 14px; border-radius:12px; border:1px solid rgba(255,255,255,0.08); box-sizing:border-box;">
+                <span style="font-size:12px; color:#ccc;">⚡ Continuous Air Draw (Always ON)</span>
+                <input type="checkbox" id="chk-always-draw" onchange="toggleAlwaysDraw(this.checked)" style="width:18px; height:18px; accent-color:#fff; cursor:pointer;">
+            </div>
+
+        </div>
+
+        <!-- 2. TOUCH TRACKPAD MODE PANEL -->
+        <div id="trackpad-panel" style="display:none; flex-direction:column; align-items:center; width:100%; max-width:380px; flex:1; justify-content:center; padding:10px 0;">
+            <div style="width:100%; height:260px; border:2px dashed rgba(255,255,255,0.25); border-radius:24px; background:rgba(255,255,255,0.03); display:flex; align-items:center; justify-content:center; text-align:center; padding:20px; box-sizing:border-box;" id="touch-pad">
+                <span style="pointer-events:none; color:#777; font-size:13px; line-height:1.8;">
+                    • <b>1 Finger:</b> Drag to draw<br>
+                    • <b>2 Fingers:</b> Drag to smudge<br>
+                    • <b>Tilt Phone:</b> Angle charcoal chalk<br>
+                    • <b>Mic:</b> Blow to blow dust
+                </span>
+            </div>
+        </div>
+
+        <!-- Bottom Action Bar (Clear & Smudge Burst) -->
+        <div style="display:flex; width:100%; max-width:380px; gap:10px; margin-top:8px;">
+            <button onclick="triggerSmudgeBurst()" style="flex:1; padding:11px; border-radius:14px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#ddd; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+                <span>💨</span> Smudge Burst
+            </button>
+            <button onclick="sendClearEvent()" style="flex:1; padding:11px; border-radius:14px; background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.4); color:#fca5a5; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+                <span>🗑️</span> Clear Canvas
+            </button>
+        </div>
+
+    </div>
 </div>
 
 <script>
@@ -254,6 +660,7 @@ varying vec2 vTexCoord;
 varying vec4 vColor;
 uniform vec2 u_resolution;
 uniform float u_wind;
+uniform vec2 u_lightPos;
 
 ${sharedGLSL}
 
@@ -262,58 +669,55 @@ void main() {
     vec2 st = screenUV;
     st.x *= u_resolution.x / u_resolution.y;
     
-    // 1. Reconstruct paper height to break the stroke on peaks/valleys
-    float paperHeight = fbm(st * 15.0); 
+    // 1. Reconstruct realistic cold-pressed paper tooth height map
+    float paperHeight = fbm(st * 16.0); 
     
-    // 2. Stroke mask (0 at ribbon edge, 1 at center)
-    // vTexCoord.y goes 0 to 1 across the ribbon.
+    // 2. Stroke ribbon mask (0 at edge, 1 at center)
     float distCenter = abs(vTexCoord.y - 0.5) * 2.0; 
-    float strokeMask = smoothstep(0.5, 0.0, distCenter); 
+    float strokeMask = smoothstep(0.85, 0.05, distCenter); 
     
-    // 3. Directional Grain (follows the ribbon UVs)
-    float grain = noise(vec2(vTexCoord.x * 60.0, vTexCoord.y * 120.0));
+    // 3. Directional charcoal grain & stick texture along the stroke ribbon
+    float grain = noise(vec2(vTexCoord.x * 60.0, vTexCoord.y * 110.0));
     
-    // 4. Base Charcoal Erosion (multiplication magic)
-    float threshold = 0.15;
-    float smoothness = 0.4;
-    float charcoalBase = smoothstep(threshold, threshold + smoothness, strokeMask * (paperHeight + 0.1) * (grain + 0.6));
+    // 4. Pigment density from vertex color (passed via vColor.r), with safe default fallback
+    float density = (vColor.r > 0.02) ? clamp(vColor.r, 0.35, 1.4) : 1.0;
     
-    // 5. High-frequency Edge Crunch
-    float edgeNoise = fbm(st * 45.0);
-    float edgeErosion = smoothstep(0.3, 0.7, strokeMask + edgeNoise * 0.6 - 0.3);
+    // 5. Physical tooth pickup:
+    // Light strokes catch raised paper fibers; firm strokes compress into tooth valleys
+    float toothThreshold = mix(0.18, 0.04, clamp(density - 0.35, 0.0, 1.0));
+    float toothSmoothness = mix(0.35, 0.18, clamp(density - 0.35, 0.0, 1.0));
+    float charcoalBase = smoothstep(toothThreshold, toothThreshold + toothSmoothness, strokeMask * (paperHeight + 0.35) * (grain + 0.6) * density);
     
-    // 6. Loose Dust Particulates (scattered outside the core stroke, blown by breath wind)
-    vec2 dustSt = st + vec2(u_wind * 0.1, 0.0);
-    float speckleNoise = random(dustSt * 800.0);
+    // 6. Natural Organic Edge Feathering
+    float edgeNoise = fbm(st * 36.0);
+    float edgeErosion = smoothstep(0.18, 0.72, strokeMask + (edgeNoise * 0.4) - 0.15);
     
-    // Wind pushes the dust probability distribution sideways
-    float dustProbCenter = distCenter - (u_wind * 0.3);
-    float dustProb = smoothstep(0.9, 0.1, dustProbCenter) * edgeNoise; 
-    float dust = step(0.985, speckleNoise) * dustProb * (0.7 + abs(u_wind)); // Wind makes more dust visible
+    // 7. Fine loose powdered carbon dust settling into paper grain
+    vec2 dustSt = st + vec2(u_wind * 0.15, 0.0);
+    float speckleNoise = random(dustSt * 600.0);
+    float dustProb = smoothstep(0.95, 0.05, distCenter - (u_wind * 0.25)) * edgeNoise;
+    float fineDust = step(0.985, speckleNoise) * dustProb * (0.4 + abs(u_wind) * 0.5);
     
-    float finalAlpha = (charcoalBase * edgeErosion) + dust;
+    float strokeAlpha = (charcoalBase * edgeErosion) + fineDust;
+    if (strokeAlpha < 0.01) discard;
     
-    if (finalAlpha < 0.01) discard; // Save fill rate
+    // 8. Authentic Charcoal Palette:
+    // Soft powdery vine charcoal grey-black to deep compressed carbon black
+    vec3 vineCharcoal = vec3(0.20, 0.19, 0.21);      // Soft, powdery vine charcoal
+    vec3 deepCompressed = vec3(0.06, 0.05, 0.06);    // Deep velvety compressed carbon
     
-    float temp = vColor.r; // Extract friction temperature
+    vec3 charcoalColor = mix(vineCharcoal, deepCompressed, clamp(density * strokeMask * 0.9, 0.0, 1.0));
     
-    vec3 charcoalColor = vec3(0.12, 0.11, 0.13); // Deep compressed charcoal
+    // Subtle realistic graphite/carbon surface sheen under incident light
+    vec2 lightNorm = u_lightPos;
+    lightNorm.x *= u_resolution.x / u_resolution.y;
+    vec3 lightDir = normalize(vec3(lightNorm.x - st.x, lightNorm.y - st.y, 0.35));
+    vec3 normal = normalize(vec3(0.0, 1.0 - distCenter, 1.8));
+    float spec = pow(max(dot(normal, lightDir), 0.0), 8.0) * 0.08 * strokeMask;
     
-    // Realism: Specular Sheen on thick graphite/charcoal
-    vec3 lightDir = normalize(vec3(0.5, 0.7, 0.5));
-    vec3 normal = normalize(vec3(0.0, 1.0 - distCenter, 2.0));
-    float spec = pow(max(dot(normal, lightDir), 0.0), 6.0) * 0.25 * (1.0 - edgeErosion);
+    vec3 finalRGB = charcoalColor + spec;
     
-    charcoalColor += spec;
-    
-    // Magic: Ember Glow when drawing fast
-    vec3 emberCore = vec3(1.0, 0.9, 0.4);
-    vec3 emberOuter = vec3(1.0, 0.2, 0.0);
-    vec3 glowColor = mix(emberOuter, emberCore, temp);
-    
-    vec3 finalRGB = mix(charcoalColor, glowColor, temp * 1.5);
-    
-    gl_FragColor = vec4(finalRGB, finalAlpha * 0.9);
+    gl_FragColor = vec4(finalRGB, strokeAlpha * 0.95);
 }
 `;
 
@@ -337,10 +741,138 @@ const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.get('remote') === 'true') {
     isRemote = true;
     document.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('ui').style.display = 'none';
-        document.getElementById('mobile-remote').style.display = 'flex';
+        const topBar = document.getElementById('top-bar');
+        const bottomIsland = document.getElementById('bottom-island');
+        const canvasHud = document.getElementById('canvas-hud');
+        if (topBar) topBar.style.display = 'none';
+        if (bottomIsland) bottomIsland.style.display = 'none';
+        if (canvasHud) canvasHud.style.display = 'none';
+        
+        const mobileRemote = document.getElementById('mobile-remote');
+        if (mobileRemote) mobileRemote.style.display = 'flex';
         initSocketRemote();
     });
+}
+
+function setRemoteMode(mode) {
+    const tabAir = document.getElementById('tab-air-wand');
+    const tabPad = document.getElementById('tab-trackpad');
+    const airPanel = document.getElementById('air-wand-panel');
+    const padPanel = document.getElementById('trackpad-panel');
+    
+    if (mode === 'air') {
+        if (tabAir) { tabAir.style.background = '#fff'; tabAir.style.color = '#000'; }
+        if (tabPad) { tabPad.style.background = 'transparent'; tabPad.style.color = '#888'; }
+        if (airPanel) airPanel.style.display = 'flex';
+        if (padPanel) padPanel.style.display = 'none';
+    } else {
+        if (tabPad) { tabPad.style.background = '#fff'; tabPad.style.color = '#000'; }
+        if (tabAir) { tabAir.style.background = 'transparent'; tabAir.style.color = '#888'; }
+        if (padPanel) padPanel.style.display = 'flex';
+        if (airPanel) airPanel.style.display = 'none';
+    }
+}
+
+let wandSensitivity = 1.35;
+function setSensitivity(val) {
+    wandSensitivity = val;
+    ['sens-08', 'sens-13', 'sens-22'].forEach(id => {
+        let b = document.getElementById(id);
+        if (b) { b.style.background = 'transparent'; b.style.color = '#888'; }
+    });
+    let activeId = val < 1.0 ? 'sens-08' : (val > 1.8 ? 'sens-22' : 'sens-13');
+    let activeBtn = document.getElementById(activeId);
+    if (activeBtn) { activeBtn.style.background = '#fff'; activeBtn.style.color = '#000'; }
+}
+
+let baseOrientation = { beta: 45, gamma: 0, alpha: 0, set: false };
+let latestOrientation = { beta: 45, gamma: 0, alpha: 0 };
+let currentWand = { x: 0, y: 0, pressure: 1.0, isDrawing: false };
+let isAlwaysDraw = false;
+
+function recenterAirWand() {
+    baseOrientation.beta = latestOrientation.beta;
+    baseOrientation.gamma = latestOrientation.gamma;
+    baseOrientation.alpha = latestOrientation.alpha;
+    baseOrientation.set = true;
+    currentWand.x = 0;
+    currentWand.y = 0;
+    
+    const dot = document.getElementById('crosshair-dot');
+    if (dot) dot.style.transform = 'translate(0px, 0px)';
+    
+    if (navigator.vibrate) navigator.vibrate(25);
+    
+    if (socket) {
+        socket.emit('motion_event', {
+            type: currentWand.isDrawing ? 'move' : 'hover',
+            x: 0,
+            y: 0,
+            pressure: 1.0,
+            isDrawing: currentWand.isDrawing,
+            beta: latestOrientation.beta,
+            gamma: latestOrientation.gamma
+        });
+    }
+}
+
+function toggleAlwaysDraw(checked) {
+    isAlwaysDraw = checked;
+    currentWand.isDrawing = checked;
+    updateAirTriggerUI(checked);
+    if (socket) {
+        socket.emit('motion_event', {
+            type: checked ? 'start' : 'end',
+            x: currentWand.x,
+            y: currentWand.y,
+            pressure: currentWand.pressure,
+            isDrawing: checked,
+            beta: latestOrientation.beta,
+            gamma: latestOrientation.gamma
+        });
+    }
+}
+
+function updateAirTriggerUI(drawing) {
+    const btn = document.getElementById('air-trigger-btn');
+    const icon = document.getElementById('trigger-icon');
+    const text = document.getElementById('trigger-text');
+    const label = document.getElementById('air-state-label');
+    const dot = document.getElementById('crosshair-dot');
+    
+    if (drawing) {
+        if (btn) {
+            btn.style.background = 'linear-gradient(145deg, #ffffff, #d4d4d8)';
+            btn.style.borderColor = '#ffffff';
+            btn.style.boxShadow = '0 0 35px rgba(255,255,255,0.4)';
+        }
+        if (icon) icon.textContent = '✏️';
+        if (text) { text.textContent = 'DRAWING ON PAPER...'; text.style.color = '#000'; }
+        if (label) { label.textContent = 'SKETCHING'; label.style.color = '#22c55e'; }
+        if (dot) { dot.style.background = '#22c55e'; dot.style.boxShadow = '0 0 16px #22c55e'; }
+    } else {
+        if (btn) {
+            btn.style.background = 'linear-gradient(145deg, rgba(255,255,255,0.14), rgba(255,255,255,0.04))';
+            btn.style.borderColor = 'rgba(255,255,255,0.25)';
+            btn.style.boxShadow = '0 8px 30px rgba(0,0,0,0.4)';
+        }
+        if (icon) icon.textContent = '🖐️';
+        if (text) { text.textContent = 'HOLD THUMB TO DRAW'; text.style.color = '#fff'; }
+        if (label) { label.textContent = 'AIMING'; label.style.color = '#888'; }
+        if (dot) { dot.style.background = '#fff'; dot.style.boxShadow = '0 0 12px #fff'; }
+    }
+}
+
+function triggerSmudgeBurst() {
+    if (navigator.vibrate) navigator.vibrate([15, 30, 15]);
+    if (socket) {
+        socket.emit('smudge_event', {
+            dx: (Math.random() - 0.5) * 0.15,
+            dy: (Math.random() - 0.5) * 0.15,
+            x: currentWand.x,
+            y: currentWand.y
+        });
+    }
 }
 
 function showPad() {
@@ -349,21 +881,31 @@ function showPad() {
 }
 
 async function requestPermissions() {
+    // 1. Device Orientation
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         try {
             const permissionState = await DeviceOrientationEvent.requestPermission();
             if (permissionState === 'granted') {
-                window.addEventListener('deviceorientation', (e) => {
-                    if (socket) socket.emit('gyro_event', { beta: e.beta, gamma: e.gamma });
-                });
+                window.addEventListener('deviceorientation', handleDeviceOrientation);
             }
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error("Orientation perm error:", e); }
     } else {
-        window.addEventListener('deviceorientation', (e) => {
-            if (socket) socket.emit('gyro_event', { beta: e.beta, gamma: e.gamma });
-        });
+        window.addEventListener('deviceorientation', handleDeviceOrientation);
     }
     
+    // 2. Device Motion (Acceleration & Gyro Velocity)
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+        try {
+            const motionState = await DeviceMotionEvent.requestPermission();
+            if (motionState === 'granted') {
+                window.addEventListener('devicemotion', handleDeviceMotion);
+            }
+        } catch (e) { console.error("Motion perm error:", e); }
+    } else {
+        window.addEventListener('devicemotion', handleDeviceMotion);
+    }
+    
+    // 3. Microphone for Breath interaction
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -379,73 +921,182 @@ async function requestPermissions() {
             let vol = sum / dataArray.length;
             if(vol > 20 && socket) socket.emit('breath_event', { volume: vol });
         }, 50);
-    } catch (e) { console.error("Mic error", e); }
+    } catch (e) { console.error("Mic error:", e); }
     
     showPad();
+}
+
+function handleDeviceOrientation(e) {
+    if (e.beta === null || e.gamma === null) return;
+    
+    latestOrientation.beta = e.beta;
+    latestOrientation.gamma = e.gamma;
+    latestOrientation.alpha = e.alpha || 0;
+    
+    if (!baseOrientation.set) {
+        baseOrientation.beta = e.beta;
+        baseOrientation.gamma = e.gamma;
+        baseOrientation.alpha = e.alpha || 0;
+        baseOrientation.set = true;
+    }
+    
+    // Relay raw gyro tilt for charcoal angle
+    if (socket) socket.emit('gyro_event', { beta: e.beta, gamma: e.gamma });
+    
+    // Calculate air wand coordinates relative to calibrated reference
+    let deltaGamma = (e.gamma - baseOrientation.gamma);
+    let deltaBeta = (e.beta - baseOrientation.beta);
+    
+    let targetX = Math.max(Math.min(deltaGamma / (26.0 / wandSensitivity), 0.5), -0.5);
+    let targetY = Math.max(Math.min(deltaBeta / (22.0 / wandSensitivity), 0.5), -0.5);
+    
+    currentWand.x += (targetX - currentWand.x) * 0.38;
+    currentWand.y += (targetY - currentWand.y) * 0.38;
+    
+    // Update Phone UI Reticle
+    const horizonLine = document.getElementById('horizon-line');
+    const crosshairDot = document.getElementById('crosshair-dot');
+    if (horizonLine) horizonLine.style.transform = `rotate(${-e.gamma}deg)`;
+    if (crosshairDot) crosshairDot.style.transform = `translate(${currentWand.x * 85}px, ${currentWand.y * 85}px)`;
+    
+    if (socket) {
+        socket.emit('motion_event', {
+            type: currentWand.isDrawing ? 'move' : 'hover',
+            x: currentWand.x,
+            y: currentWand.y,
+            pressure: currentWand.pressure,
+            isDrawing: currentWand.isDrawing,
+            beta: e.beta,
+            gamma: e.gamma
+        });
+    }
+}
+
+function handleDeviceMotion(e) {
+    let acc = e.acceleration || e.accelerationIncludingGravity;
+    if (acc && acc.x !== null) {
+        let mag = Math.sqrt((acc.x||0)*(acc.x||0) + (acc.y||0)*(acc.y||0) + (acc.z||0)*(acc.z||0));
+        let normPressure = 0.6 + Math.min(Math.max(mag / 10.0, 0.0), 1.2);
+        currentWand.pressure = currentWand.pressure * 0.8 + normPressure * 0.2;
+    }
 }
 
 function initSocketRemote() {
     socket = io();
     
-    let pad = document.getElementById('touch-pad');
-    let lastX = 0, lastY = 0;
-    let lastSmudgeX = 0, lastSmudgeY = 0;
-
-    pad.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        if (e.touches.length === 1) {
-            let touch = e.touches[0];
-            let rect = pad.getBoundingClientRect();
-            lastX = (touch.clientX - rect.left) / rect.width - 0.5;
-            lastY = (touch.clientY - rect.top) / rect.height - 0.5;
-            socket.emit('draw_event', { type: 'start', x: lastX, y: lastY });
-        } else if (e.touches.length === 2) {
-            let touch1 = e.touches[0];
-            let touch2 = e.touches[1];
-            lastSmudgeX = (touch1.clientX + touch2.clientX) / 2;
-            lastSmudgeY = (touch1.clientY + touch2.clientY) / 2;
-        }
-    }, {passive: false});
-
-    pad.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-        let rect = pad.getBoundingClientRect();
+    // --- 1. Air Wand Trigger Handling ---
+    const triggerBtn = document.getElementById('air-trigger-btn');
+    if (triggerBtn) {
+        const startAirDraw = (e) => {
+            e.preventDefault();
+            if (isAlwaysDraw) return;
+            currentWand.isDrawing = true;
+            updateAirTriggerUI(true);
+            if (navigator.vibrate) navigator.vibrate(18);
+            if (socket) {
+                socket.emit('motion_event', {
+                    type: 'start',
+                    x: currentWand.x,
+                    y: currentWand.y,
+                    pressure: currentWand.pressure,
+                    isDrawing: true,
+                    beta: latestOrientation.beta,
+                    gamma: latestOrientation.gamma
+                });
+            }
+        };
         
-        if (e.touches.length === 1) {
-            let touch = e.touches[0];
-            lastX = (touch.clientX - rect.left) / rect.width - 0.5;
-            lastY = (touch.clientY - rect.top) / rect.height - 0.5;
-            socket.emit('draw_event', { type: 'move', x: lastX, y: lastY });
-        } else if (e.touches.length === 2) {
-            let touch1 = e.touches[0];
-            let touch2 = e.touches[1];
-            let cx = (touch1.clientX + touch2.clientX) / 2;
-            let cy = (touch1.clientY + touch2.clientY) / 2;
-            
-            let dx = (cx - lastSmudgeX) / rect.width;
-            let dy = (cy - lastSmudgeY) / rect.height;
-            let nx = (cx - rect.left) / rect.width - 0.5;
-            let ny = (cy - rect.top) / rect.height - 0.5;
-            
-            socket.emit('smudge_event', { dx: dx, dy: dy, x: nx, y: ny });
-            lastSmudgeX = cx;
-            lastSmudgeY = cy;
-        }
-    }, {passive: false});
+        const stopAirDraw = (e) => {
+            e.preventDefault();
+            if (isAlwaysDraw) return;
+            currentWand.isDrawing = false;
+            updateAirTriggerUI(false);
+            if (socket) {
+                socket.emit('motion_event', {
+                    type: 'end',
+                    x: currentWand.x,
+                    y: currentWand.y,
+                    pressure: currentWand.pressure,
+                    isDrawing: false,
+                    beta: latestOrientation.beta,
+                    gamma: latestOrientation.gamma
+                });
+            }
+        };
+        
+        triggerBtn.addEventListener('touchstart', startAirDraw, {passive: false});
+        triggerBtn.addEventListener('touchend', stopAirDraw, {passive: false});
+        triggerBtn.addEventListener('touchcancel', stopAirDraw, {passive: false});
+        triggerBtn.addEventListener('mousedown', startAirDraw);
+        triggerBtn.addEventListener('mouseup', stopAirDraw);
+    }
+    
+    // --- 2. Trackpad Handling ---
+    let pad = document.getElementById('touch-pad');
+    if (pad) {
+        let lastX = 0, lastY = 0;
+        let lastSmudgeX = 0, lastSmudgeY = 0;
 
-    pad.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        if (e.touches.length === 0) {
-            socket.emit('draw_event', { type: 'end' });
-        }
-    }, {passive: false});
+        pad.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 1) {
+                let touch = e.touches[0];
+                let rect = pad.getBoundingClientRect();
+                lastX = (touch.clientX - rect.left) / rect.width - 0.5;
+                lastY = (touch.clientY - rect.top) / rect.height - 0.5;
+                socket.emit('draw_event', { type: 'start', x: lastX, y: lastY });
+            } else if (e.touches.length === 2) {
+                let touch1 = e.touches[0];
+                let touch2 = e.touches[1];
+                lastSmudgeX = (touch1.clientX + touch2.clientX) / 2;
+                lastSmudgeY = (touch1.clientY + touch2.clientY) / 2;
+            }
+        }, {passive: false});
+
+        pad.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            let rect = pad.getBoundingClientRect();
+            
+            if (e.touches.length === 1) {
+                let touch = e.touches[0];
+                lastX = (touch.clientX - rect.left) / rect.width - 0.5;
+                lastY = (touch.clientY - rect.top) / rect.height - 0.5;
+                socket.emit('draw_event', { type: 'move', x: lastX, y: lastY });
+            } else if (e.touches.length === 2) {
+                let touch1 = e.touches[0];
+                let touch2 = e.touches[1];
+                let cx = (touch1.clientX + touch2.clientX) / 2;
+                let cy = (touch1.clientY + touch2.clientY) / 2;
+                
+                let dx = (cx - lastSmudgeX) / rect.width;
+                let dy = (cy - lastSmudgeY) / rect.height;
+                let nx = (cx - rect.left) / rect.width - 0.5;
+                let ny = (cy - rect.top) / rect.height - 0.5;
+                
+                socket.emit('smudge_event', { dx: dx, dy: dy, x: nx, y: ny });
+                lastSmudgeX = cx;
+                lastSmudgeY = cy;
+            }
+        }, {passive: false});
+
+        pad.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 0) {
+                socket.emit('draw_event', { type: 'end' });
+            }
+        }, {passive: false});
+    }
 }
 
 function sendClearEvent() {
+    if (navigator.vibrate) navigator.vibrate(30);
     if (socket) socket.emit('clear_event');
 }
 
-let audioCtx, noiseNode, filterNode, gainNode;
+let audioCtx;
+let noiseSourceNode;
+let raspFilterNode, shelfFilterNode, bodyFilterNode;
+let masterGainNode, raspGainNode, bodyGainNode;
 let currentWind = 0.0;
 let remoteTilt = { beta: 0, gamma: 0 };
 let audioStarted = false;
@@ -493,34 +1144,164 @@ function triggerCoCreation() {
 }
 
 function initAudio() {
-    if (audioStarted) return;
-    audioStarted = true;
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    let bufferSize = audioCtx.sampleRate * 2; 
-    let buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-    let data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-    
-    noiseNode = audioCtx.createBufferSource();
-    noiseNode.buffer = buffer;
-    noiseNode.loop = true;
-    
-    filterNode = audioCtx.createBiquadFilter();
-    filterNode.type = 'bandpass';
-    filterNode.frequency.value = 400;
-    filterNode.Q.value = 0.5;
-    
-    gainNode = audioCtx.createGain();
-    gainNode.gain.value = 0;
-    
-    noiseNode.connect(filterNode);
-    filterNode.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-    noiseNode.start();
+    if (isAudioMuted) return;
+    if (audioStarted) {
+        if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        return;
+    }
+    try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        audioStarted = true;
+        
+        // Realistic multi-textured pink noise buffer (representing microscopic paper fibers)
+        let bufferSize = audioCtx.sampleRate * 3;
+        let buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        let data = buffer.getChannelData(0);
+        
+        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+        for (let i = 0; i < bufferSize; i++) {
+            let white = Math.random() * 2 - 1;
+            // Pink noise filtering
+            b0 = 0.99886 * b0 + white * 0.0555179;
+            b1 = 0.99332 * b1 + white * 0.0750759;
+            b2 = 0.96900 * b2 + white * 0.1538520;
+            b3 = 0.86650 * b3 + white * 0.3104856;
+            b4 = 0.55000 * b4 + white * 0.5329522;
+            b5 = -0.7616 * b5 - white * 0.0168980;
+            let pink = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+            b6 = white * 0.115926;
+            
+            // Micro-asperity grain pops (natural charcoal fracture on cold-pressed tooth)
+            let grainPop = (Math.random() < 0.003) ? (Math.random() - 0.5) * 0.8 : 0;
+            data[i] = (pink * 0.14) + grainPop;
+        }
+        
+        noiseSourceNode = audioCtx.createBufferSource();
+        noiseSourceNode.buffer = buffer;
+        noiseSourceNode.loop = true;
+        
+        // 1. High-Frequency Dry Paper Tooth Scratch
+        let hpFilter = audioCtx.createBiquadFilter();
+        hpFilter.type = 'highpass';
+        hpFilter.frequency.value = 900;
+        
+        raspFilterNode = audioCtx.createBiquadFilter();
+        raspFilterNode.type = 'peaking';
+        raspFilterNode.frequency.value = 3200; // Fixed physical tooth friction resonance
+        raspFilterNode.Q.value = 1.6;
+        raspFilterNode.gain.value = 6;
+        
+        shelfFilterNode = audioCtx.createBiquadFilter();
+        shelfFilterNode.type = 'highshelf';
+        shelfFilterNode.frequency.value = 4600;
+        shelfFilterNode.gain.value = 3;
+        
+        raspGainNode = audioCtx.createGain();
+        raspGainNode.gain.value = 0.85;
+        
+        // 2. Low-End Body & Paper Board Resonance
+        bodyFilterNode = audioCtx.createBiquadFilter();
+        bodyFilterNode.type = 'bandpass';
+        bodyFilterNode.frequency.value = 210;
+        bodyFilterNode.Q.value = 2.2;
+        
+        bodyGainNode = audioCtx.createGain();
+        bodyGainNode.gain.value = 0.35;
+        
+        // Master Gain
+        masterGainNode = audioCtx.createGain();
+        masterGainNode.gain.value = 0.0;
+        
+        // Connect routing
+        noiseSourceNode.connect(hpFilter);
+        hpFilter.connect(raspFilterNode);
+        raspFilterNode.connect(shelfFilterNode);
+        shelfFilterNode.connect(raspGainNode);
+        raspGainNode.connect(masterGainNode);
+        
+        noiseSourceNode.connect(bodyFilterNode);
+        bodyFilterNode.connect(bodyGainNode);
+        bodyGainNode.connect(masterGainNode);
+        
+        masterGainNode.connect(audioCtx.destination);
+        noiseSourceNode.start();
+    } catch (e) {
+        console.warn("Audio init error:", e);
+    }
 }
+
+function playCharcoalFrictionSound(velocity, pressure = 1.0) {
+    if (isAudioMuted || !audioStarted || !audioCtx || !masterGainNode) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    
+    let now = audioCtx.currentTime;
+    let normVel = Math.min(Math.max(velocity / 35.0, 0.05), 1.5);
+    let normPressure = Math.min(Math.max(pressure, 0.4), 2.2);
+    
+    // Natural physical loudness modulation without synthetic pitch sweeping
+    let targetGain = Math.min(0.04 + (normVel * 0.24 * normPressure), 0.42);
+    let targetRaspFreq = 3000 + (normVel * 400); // 3000Hz - 3600Hz subtle brightness
+    
+    masterGainNode.gain.cancelScheduledValues(now);
+    masterGainNode.gain.setTargetAtTime(targetGain, now, 0.015);
+    raspFilterNode.frequency.setTargetAtTime(targetRaspFreq, now, 0.03);
+    bodyGainNode.gain.setTargetAtTime(0.3 + (normPressure * 0.25), now, 0.03);
+}
+
+function playCharcoalSmudgeSound(intensity) {
+    if (isAudioMuted || !audioStarted || !audioCtx || !masterGainNode) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    let now = audioCtx.currentTime;
+    let targetGain = Math.min(intensity * 0.22, 0.35);
+    masterGainNode.gain.cancelScheduledValues(now);
+    masterGainNode.gain.setTargetAtTime(targetGain, now, 0.02);
+    raspFilterNode.frequency.setTargetAtTime(2200, now, 0.04);
+}
+
+let airWandCursor = { x: 0, y: 0, active: false, isDrawing: false, pressure: 1.0, lastSeen: 0, beta: 0, gamma: 0 };
 
 function initSocketDisplay() {
     socket = io();
+    
+    // 1. Air Wand / Motion event handler (Spatial phone movement in 3D air)
+    socket.on('motion_event', (data) => {
+        if (appMode !== 'freehand') {
+            setMode('freehand');
+        }
+        
+        airWandCursor.active = true;
+        airWandCursor.lastSeen = Date.now();
+        airWandCursor.x = data.x * width;
+        airWandCursor.y = data.y * height;
+        airWandCursor.pressure = data.pressure || 1.0;
+        airWandCursor.beta = data.beta || 0;
+        airWandCursor.gamma = data.gamma || 0;
+        
+        remoteTilt.beta = airWandCursor.beta;
+        remoteTilt.gamma = airWandCursor.gamma;
+        
+        if (data.type === 'start' || (data.isDrawing && !airWandCursor.isDrawing)) {
+            airWandCursor.isDrawing = true;
+            isDrawing = true;
+            currentStroke = [];
+            freehandStrokes.push(currentStroke);
+            addFreehandPoint(airWandCursor.x, airWandCursor.y, airWandCursor.pressure);
+        } else if (data.type === 'move' && data.isDrawing) {
+            airWandCursor.isDrawing = true;
+            isDrawing = true;
+            if (currentStroke) {
+                addFreehandPoint(airWandCursor.x, airWandCursor.y, airWandCursor.pressure);
+            }
+        } else if (data.type === 'end' || (!data.isDrawing && airWandCursor.isDrawing)) {
+            airWandCursor.isDrawing = false;
+            isDrawing = false;
+            triggerCoCreation();
+        }
+    });
+
+    // 2. Touchpad drag draw event
     socket.on('draw_event', (data) => {
         // Auto-switch to freehand mode on remote activity
         if (appMode !== 'freehand') {
@@ -559,15 +1340,16 @@ function initSocketDisplay() {
     socket.on('smudge_event', (data) => {
         let sX = data.x * width;
         let sY = data.y * height;
-        let radius = 100;
+        let radius = 120;
         
         let dxWorld = data.dx * width;
         let dyWorld = data.dy * height;
         
         // Spawn physical dust particles at the smudge location based on velocity
         let speed = Math.sqrt(dxWorld*dxWorld + dyWorld*dyWorld);
-        if (speed > 5) {
-            spawnDust(sX, sY, dxWorld * 0.1, dyWorld * 0.1, min(speed / 10.0, 3.0));
+        if (speed > 4) {
+            spawnDust(sX, sY, dxWorld * 0.12, dyWorld * 0.12, min(speed / 8.0, 3.5));
+            playCharcoalSmudgeSound(min(speed / 8.0, 1.6));
         }
         
         // Temporarily shift all nearby points to simulate a smudge
@@ -575,7 +1357,7 @@ function initSocketDisplay() {
             stroke.forEach(p => {
                 let d = dist(sX, sY, p.x, p.y);
                 if(d < radius) {
-                    let force = pow(1.0 - d/radius, 2) * 30.0;
+                    let force = pow(1.0 - d/radius, 2) * 35.0;
                     p.x += data.dx * width * force;
                     p.y += data.dy * height * force;
                 }
@@ -628,7 +1410,7 @@ function setup() {
 }
 
 function mousePressed() {
-    initAudio();
+    if (!isAudioMuted) initAudio();
     if (appMode === 'freehand' && mouseY < height - 70) {
         isDrawing = true;
         currentStroke = [];
@@ -651,19 +1433,17 @@ function mouseReleased() {
 let dustParticles = [];
 
 function spawnDust(x, y, vx, vy, pressure) {
-    let amount = Math.floor(random(1, 4) * pressure);
+    let amount = Math.floor(random(1, 3) * (pressure || 1.0));
     for(let i=0; i<amount; i++) {
         dustParticles.push({
-            x: x + random(-10, 10),
-            y: y + random(-10, 10),
-            z: random(10, 30),
-            vx: vx * random(0.1, 0.3) + random(-2, 2),
-            vy: vy * random(0.1, 0.3) + random(-2, 2),
-            vz: random(-1, 1),
-            life: 255,
-            size: random(1.5, 4.0),
-            rot: random(TWO_PI),
-            rotVel: random(-0.2, 0.2)
+            x: x + random(-6, 6),
+            y: y + random(-6, 6),
+            z: random(2, 10),
+            vx: vx * random(0.04, 0.12) + random(-0.6, 0.6),
+            vy: vy * random(0.04, 0.12) + random(-0.4, 0.4),
+            life: 180,
+            maxLife: 180,
+            size: random(1.5, 3.2)
         });
     }
 }
@@ -678,24 +1458,18 @@ function addFreehandPoint(x, y, pressureOverride = null) {
         distVal = dist(last.x, last.y, x, y);
         vx = x - last.x;
         vy = y - last.y;
-        if (distVal < 4) return;
+        if (distVal < 3) return;
     }
     
-    // Magic: Velocity creates friction heat
-    let heat = min(distVal / 25.0, 1.0);
+    let pVal = (pressureOverride !== null && pressureOverride !== undefined) ? pressureOverride : 1.0;
+    currentStroke.push({x: x, y: y, idx: globalPointIndex++, pressure: pVal});
     
-    currentStroke.push({x: x, y: y, idx: globalPointIndex++, pressure: pressureOverride, temp: heat});
-    
-    if (distVal > 15 || (pressureOverride && pressureOverride > 1.2)) {
-        spawnDust(x, y, vx, vy, pressureOverride || 1.0);
+    if (distVal > 18 || pVal > 1.2) {
+        spawnDust(x, y, vx, vy, pVal);
     }
     
     if (audioStarted && isDrawing) {
-        // Psycho-Acoustic Friction: Map drawing velocity (distance) to pitch and volume
-        let targetFreq = map(distVal, 4, 50, 200, 1500, true);
-        let targetGain = map(distVal, 4, 50, 0.05, 0.3, true);
-        filterNode.frequency.value = lerp(filterNode.frequency.value, targetFreq, 0.3);
-        gainNode.gain.value = lerp(gainNode.gain.value, targetGain, 0.3);
+        playCharcoalFrictionSound(distVal, pVal);
     }
     
     for(let i = 0; i < currentStroke.length; i++) {
@@ -764,10 +1538,10 @@ function generateAnimalPath(animalId, length, bounds) {
     // Generative Silhouette (X, Y normalized coordinates)
     const animalOutline = animalShapes[animalId] || animalShapes.unicorn;
 
-    let scale = Math.min(bounds.width, bounds.height) * 0.45;
+    let scale = Math.min(bounds.width, bounds.height) * 0.42;
     let passes = 3; // Number of sketchy passes around the outline
     let totalSegments = (animalOutline.length - 1) * passes;
-    let pointsPerSegment = Math.floor(length / totalSegments);
+    let pointsPerSegment = Math.max(Math.floor(length / totalSegments), 4);
     let t_noise = 0;
     
     for (let pass = 0; pass < passes; pass++) {
@@ -784,17 +1558,24 @@ function generateAnimalPath(animalId, length, bounds) {
                 let y = catmullRom(p0[1], p1[1], p2[1], p3[1], t) * scale;
                 
                 // Add sketchy hand jitter using noise
-                let noiseFreq = 0.02;
-                // Wider jitter on subsequent passes to simulate charcoal smudging out
-                let noiseAmp = 8.0 + (pass * 6.0); 
+                let noiseFreq = 0.025;
+                let noiseAmp = 4.0 + (pass * 4.0); 
                 x += (noise(t_noise * noiseFreq) - 0.5) * noiseAmp;
                 y += (noise((t_noise + 100) * noiseFreq) - 0.5) * noiseAmp;
                 
                 // Add a low-frequency drift to warp the proportions slightly per pass
-                x += Math.sin(t_noise * 0.005) * (pass * 10);
-                y += Math.cos(t_noise * 0.005) * (pass * 10);
+                x += Math.sin(t_noise * 0.005) * (pass * 6);
+                y += Math.cos(t_noise * 0.005) * (pass * 6);
                 
-                pts.push({x, y});
+                // Natural pressure variation along the charcoal sketch path
+                let pVar = 0.8 + (noise(t_noise * 0.03 + 50) * 0.5) + (Math.sin(t_noise * 0.02) * 0.2);
+                
+                pts.push({
+                    x: x, 
+                    y: y, 
+                    idx: pts.length,
+                    pressure: pVar
+                });
                 t_noise += 1.0;
             }
         }
@@ -819,9 +1600,12 @@ function generateAnimalPath(animalId, length, bounds) {
 }
 
 function drawStroke(points, limit) {
-    if (points.length < 2) return;
+    if (!points || points.length < 2) return;
+    let count = Math.min(points.length, limit);
+    if (count < 2) return;
+    
     beginShape(TRIANGLE_STRIP);
-    for (let i = 0; i < limit; i++) {
+    for (let i = 0; i < count; i++) {
         let p = points[i];
         let nx = -p.ty;
         let ny = p.tx;
@@ -830,20 +1614,20 @@ function drawStroke(points, limit) {
         
         let pressure = (p.pressure !== undefined && p.pressure !== null) 
             ? p.pressure 
-            : noise(noiseIdx * 0.02 + 200) * (0.5 + 0.5 * Math.sin(noiseIdx * 0.01));
+            : (0.7 + noise(noiseIdx * 0.03 + 200) * 0.6);
         
         // Map gyro tilt (gamma) to charcoal angle/width multiplier
         let tiltFactor = map(abs(remoteTilt.gamma), 0, 90, 1.0, 3.0, true);
         
-        let baseW = 10.0 * (0.4 + pressure * 1.6);
+        let baseW = 9.5 * (0.45 + pressure * 0.9);
         let w = baseW * tiltFactor; 
-        let u = noiseIdx / 150.0; 
+        let u = noiseIdx / 120.0; 
         
-        let zDepth = pressure * 30.0; // Spatial UX: Map pressure to Z-depth
+        let zDepth = pressure * 18.0; // Spatial depth
         
-        // Map temperature to red channel in vertex color
-        let temp = p.temp || 0.0;
-        fill(temp * 255, 0, 0, 255);
+        // Map normalized pigment density to vertex color for charcoalFrag shader
+        let density = map(pressure, 0.3, 1.8, 0.55, 1.25, true);
+        fill(density * 255, density * 255, density * 255, 255);
         
         vertex(p.x + nx * w, p.y + ny * w, zDepth, u, 0.0);
         vertex(p.x - nx * w, p.y - ny * w, zDepth, u, 1.0);
@@ -886,20 +1670,26 @@ function draw() {
     charcoalSh.setUniform('u_wind', currentWind);
     charcoalSh.setUniform('u_lightPos', [lx, ly]);
     
-    // Audio Friction decay
-    if (audioStarted && !isDrawing) {
-        gainNode.gain.value = lerp(gainNode.gain.value, 0.0, 0.1);
+    // Audio Friction natural decay when not drawing
+    if (audioStarted && masterGainNode && !isDrawing && (appMode !== 'preset' || drawProgress >= pathData.length) && (!activePhantom || appMode !== 'freehand')) {
+        let now = audioCtx.currentTime;
+        masterGainNode.gain.setTargetAtTime(0.0, now, 0.04);
     }
     
     if (appMode === 'preset') {
-        let pointsPerFrame = 25;
-        drawProgress = min(pathData.length, drawProgress + pointsPerFrame);
+        let pointsPerFrame = 35;
+        if (drawProgress < pathData.length) {
+            drawProgress = min(pathData.length, drawProgress + pointsPerFrame);
+            if (audioStarted && drawProgress < pathData.length) {
+                playCharcoalFrictionSound(16.0, 0.85);
+            }
+        }
         
         drawStroke(pathData, drawProgress);
     } else if (appMode === 'freehand') {
         
         if (activePhantom && !isDrawing) {
-            // Jazz duet!
+            // Jazz duet! Generative graceful charcoal stroke
             activePhantom.noiseOffset += 0.02;
             let curl = (noise(activePhantom.noiseOffset) - 0.5) * 0.2;
             activePhantom.angle += curl;
@@ -910,18 +1700,22 @@ function draw() {
             activePhantom.x += activePhantom.vx;
             activePhantom.y += activePhantom.vy;
             
-            activePhantom.speed *= 0.985; 
+            activePhantom.speed *= 0.982; 
             
             let p = {
                 x: activePhantom.x, 
                 y: activePhantom.y, 
                 idx: globalPointIndex++, 
-                pressure: map(activePhantom.speed, 0, 15, 0.1, 1.5, true),
-                temp: 1.0 // Magic phantom always burns hot
+                pressure: map(activePhantom.speed, 0, 15, 0.3, 1.2, true)
             };
             
             let stroke = activePhantom.stroke;
             stroke.push(p);
+            
+            // Soft tactile friction sound for generative stroke
+            if (audioStarted) {
+                playCharcoalFrictionSound(activePhantom.speed * 1.5, 0.65);
+            }
             
             // Recalculate tangents for the end of the stroke
             for(let i = stroke.length - 3; i < stroke.length; i++) {
@@ -945,28 +1739,23 @@ function draw() {
             }
         }
 
-        // Cool down temperatures and draw strokes
+        // Draw all freehand charcoal strokes
         for (let i = 0; i < freehandStrokes.length; i++) {
-            for (let j = 0; j < freehandStrokes[i].length; j++) {
-                if (freehandStrokes[i][j].temp > 0) {
-                    freehandStrokes[i][j].temp *= 0.95; // Physics: Embers cooling off over time
-                }
-            }
             drawStroke(freehandStrokes[i], freehandStrokes[i].length);
         }
         
-        // 3. Render physical dust particles
+        // 3. Render physical fine charcoal dust grains
         if (dustParticles.length > 0) {
-            resetShader(); // Drop back to standard p5 3D rendering for particles
+            resetShader(); // Drop back to standard p5 rendering for micro-powder
             noStroke();
             for (let i = dustParticles.length - 1; i >= 0; i--) {
                 let p = dustParticles[i];
                 
-                // Physics
-                p.x += p.vx + (currentWind * 5.0);
+                // Physics: breath wind, air resistance & gentle gravity settling
+                p.x += p.vx + (currentWind * 3.5);
                 p.y += p.vy;
-                p.vy += 0.2; // Gravity
-                p.rot += p.rotVel;
+                p.vx *= 0.94;
+                p.vy = (p.vy + 0.06) * 0.96;
                 p.life -= 4; // Fade out
                 
                 if (p.life <= 0) {
@@ -974,13 +1763,48 @@ function draw() {
                     continue;
                 }
                 
+                let alpha = (p.life / p.maxLife) * 140;
                 push();
                 translate(p.x, p.y, p.z);
-                rotateZ(p.rot);
-                fill(40, 40, 40, p.life);
-                plane(p.size, p.size);
+                fill(32, 30, 32, alpha);
+                ellipse(0, 0, p.size, p.size);
                 pop();
             }
+        }
+
+        // 4. Render Spatial Air Wand Cursor Reticle
+        if (airWandCursor.active && (Date.now() - airWandCursor.lastSeen < 4000)) {
+            resetShader();
+            push();
+            translate(airWandCursor.x, airWandCursor.y, 10);
+            
+            if (airWandCursor.isDrawing) {
+                // Drawing active indicator: subtle carbon halo
+                noFill();
+                stroke(40, 38, 40, 180);
+                strokeWeight(1.8);
+                ellipse(0, 0, 12, 12);
+                fill(25, 23, 25, 220);
+                noStroke();
+                ellipse(0, 0, 4, 4);
+            } else {
+                // Aiming / hovering: elegant charcoal stylus pointer
+                noFill();
+                stroke(60, 58, 62, 160);
+                strokeWeight(1.2);
+                ellipse(0, 0, 16, 16);
+                
+                stroke(60, 58, 62, 100);
+                line(-11, 0, -4, 0);
+                line(4, 0, 11, 0);
+                line(0, -11, 0, -4);
+                line(0, 4, 0, 11);
+                
+                fill(40, 38, 42, 200);
+                noStroke();
+                ellipse(0, 0, 3.5, 3.5);
+            }
+            pop();
         }
 
     }
@@ -996,14 +1820,71 @@ function windowResized() {
     }
 }
 
+// Paper Styles
+const paperStyles = [
+    { name: "Archival Cotton 300g", tooth: "Cold-Pressed", badge: "Cotton 300g (Heavy Grain)" },
+    { name: "Smooth Bristol Board", tooth: "Hot-Pressed", badge: "Bristol (Fine Satin)" },
+    { name: "Raw Mulberry Washi", tooth: "Washi Fiber", badge: "Washi (Organic Flecks)" }
+];
+let currentPaperIdx = 0;
+
+function cyclePaperGrain() {
+    currentPaperIdx = (currentPaperIdx + 1) % paperStyles.length;
+    let p = paperStyles[currentPaperIdx];
+    
+    let badge = document.getElementById('paper-badge');
+    if (badge) badge.textContent = p.badge;
+    
+    let btnPaper = document.getElementById('btn-paper-cycle');
+    if (btnPaper) btnPaper.innerHTML = `<span>📄</span> Paper: ${p.tooth}`;
+    
+    showToast(`Active substrate: ${p.name}`, "📄", 2500);
+}
+
+let isAudioMuted = false;
+function toggleAudioMute() {
+    isAudioMuted = !isAudioMuted;
+    let icon = document.getElementById('audio-icon');
+    let label = document.getElementById('audio-label');
+    let btn = document.getElementById('btn-audio-toggle');
+    
+    if (isAudioMuted) {
+        if (icon) icon.textContent = '🔇';
+        if (label) label.textContent = 'Sound OFF';
+        if (btn) btn.classList.remove('active');
+        if (masterGainNode && audioCtx) {
+            masterGainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+            masterGainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+        }
+        if (audioCtx && audioCtx.state === 'running') {
+            audioCtx.suspend();
+        }
+        showToast("Audio muted", "🔇", 2000);
+    } else {
+        if (icon) icon.textContent = '🔊';
+        if (label) label.textContent = 'Sound ON';
+        if (btn) btn.classList.add('active');
+        if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        } else {
+            initAudio();
+        }
+        showToast("Acoustic charcoal rasp enabled", "🔊", 2000);
+    }
+}
+
 function setAnimal(id) {
+    if (!isAudioMuted) initAudio();
     appMode = 'preset';
     currentAnimal = id;
-    pathData = generateAnimalPath(currentAnimal, 4000, {width: width, height: height});
+    pathData = generateAnimalPath(currentAnimal, 3500, {width: width, height: height});
     drawProgress = 0;
+    activePhantom = null;
     
-    // Update UI
-    const btns = document.querySelectorAll('.preset-btn');
+    // Update active tab buttons
+    setAppModeView('preset', false);
+    
+    const btns = document.querySelectorAll('#preset-subjects-group .preset-btn');
     btns.forEach(btn => {
         if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes("'" + id + "'")) {
             btn.classList.add('active');
@@ -1011,30 +1892,120 @@ function setAnimal(id) {
             btn.classList.remove('active');
         }
     });
-    document.getElementById('btn-clear').style.display = 'none';
     
+    showToast(`Sketching ${id.charAt(0).toUpperCase() + id.slice(1)} silhouette`, "✨", 2200);
     loop();
 }
 
-function setMode(mode) {
+function setAppModeView(mode, notify = true) {
     appMode = mode;
-    const btns = document.querySelectorAll('.preset-btn');
-    btns.forEach(btn => btn.classList.remove('active'));
+    const tabPreset = document.getElementById('mode-tab-preset');
+    const tabFreehand = document.getElementById('mode-tab-freehand');
+    const groupSubjects = document.getElementById('preset-subjects-group');
+    const groupFreehand = document.getElementById('freehand-tools-group');
+    const hudTip = document.getElementById('hud-mode-tip');
     
-    if (mode === 'freehand') {
-        document.getElementById('btn-freehand').classList.add('active');
-        document.getElementById('btn-clear').style.display = 'block';
-        freehandStrokes = [];
-        globalPointIndex = 0;
-        loop(); 
+    if (mode === 'preset') {
+        if (tabPreset) tabPreset.classList.add('active');
+        if (tabFreehand) tabFreehand.classList.remove('active');
+        if (groupSubjects) groupSubjects.style.display = 'flex';
+        if (groupFreehand) groupFreehand.style.display = 'none';
+        if (hudTip) hudTip.innerHTML = '🖱️ Move mouse to shift studio lighting • Choose animal silhouettes';
+        if (notify) showToast("Preset Art Mode: Procedural cursive sketches", "✦", 2000);
     } else {
-        document.getElementById('btn-clear').style.display = 'none';
+        if (tabFreehand) tabFreehand.classList.add('active');
+        if (tabPreset) tabPreset.classList.remove('active');
+        if (groupSubjects) groupSubjects.style.display = 'none';
+        if (groupFreehand) groupFreehand.style.display = 'flex';
+        if (hudTip) hudTip.innerHTML = '✏️ Click & drag to sketch • Right-click to smudge • Space to blow dust';
+        if (notify) showToast("Freehand Studio: Sketch freely with charcoal stick or phone wand", "✏️", 2500);
+        loop();
     }
 }
 
+function setMode(mode) {
+    setAppModeView(mode);
+}
+
+function undoLastStroke() {
+    if (freehandStrokes.length > 0) {
+        freehandStrokes.pop();
+        showToast("Last stroke undone", "↩️", 1800);
+    } else {
+        showToast("No strokes to undo", "ℹ️", 1800);
+    }
+}
+
+function triggerManualSmudge() {
+    triggerSmudgeBurst();
+    showToast("Smudged carbon particles across the grain", "💨", 2000);
+}
+
+function triggerBlowDust() {
+    currentWind = 1.0;
+    scatterFineDust(0, 0, 1.0);
+    if (navigator.vibrate) navigator.vibrate(50);
+    showToast("Carbon powder lifted with breath", "🌬️", 2000);
+}
+
+function toggleShortcutsModal() {
+    const dialog = document.getElementById('shortcuts-dialog');
+    if (!dialog) return;
+    dialog.style.display = (dialog.style.display === 'none' || dialog.style.display === '') ? 'block' : 'none';
+}
+
+function exportArtworkPNG() {
+    showToast("Exporting high-resolution charcoal artwork...", "💾", 2000);
+    try {
+        saveCanvas(`charcoal-atelier-${Date.now()}`, 'png');
+        setTimeout(() => {
+            showToast("Artwork saved to your downloads!", "✓", 3000);
+        }, 800);
+    } catch (e) {
+        console.error("Export error:", e);
+        showToast("Failed to save canvas", "⚠️", 2500);
+    }
+}
+
+// Global Keyboard Shortcuts
+window.addEventListener('keydown', (e) => {
+    if (isRemote) return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    
+    // Undo
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        undoLastStroke();
+    }
+    // Smudge
+    else if (e.key.toLowerCase() === 's') {
+        triggerManualSmudge();
+    }
+    // Blow dust
+    else if (e.key === ' ' || e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        triggerBlowDust();
+    }
+    // Clear
+    else if (e.key.toLowerCase() === 'c') {
+        clearFreehand();
+        showToast("Canvas cleared", "🗑️", 1800);
+    }
+    // Export
+    else if (e.key.toLowerCase() === 'e') {
+        exportArtworkPNG();
+    }
+    // Help dialog
+    else if (e.key.toLowerCase() === 'h' || e.key === '?') {
+        toggleShortcutsModal();
+    }
+});
+
 function clearFreehand() {
     freehandStrokes = [];
+    dustParticles = [];
     globalPointIndex = 0;
+    showToast("Canvas cleared", "🗑️", 1800);
 }
 
 let toastTimer = null;
@@ -1054,17 +2025,76 @@ function showToast(message, icon = 'ℹ️', duration = 4500) {
     }, duration);
 }
 
+function getRemoteUrl() {
+    let base = window.location.href.split('?')[0].split('#')[0];
+    return base + '?remote=true';
+}
+
+function copyRemoteLink() {
+    let url = getRemoteUrl();
+    const copyBtn = document.getElementById('btn-copy-link');
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+            if (copyBtn) {
+                copyBtn.textContent = '✓ Copied!';
+                setTimeout(() => { copyBtn.textContent = '📋 Copy'; }, 2500);
+            }
+            showToast("Direct remote link copied! Open it on your phone.", "📋");
+        }).catch(() => {
+            fallbackCopy(url);
+        });
+    } else {
+        fallbackCopy(url);
+    }
+}
+
+function fallbackCopy(url) {
+    let input = document.getElementById('remote-url-input');
+    if (input) {
+        input.select();
+        input.setSelectionRange(0, 99999);
+        try {
+            document.execCommand('copy');
+            const copyBtn = document.getElementById('btn-copy-link');
+            if (copyBtn) {
+                copyBtn.textContent = '✓ Copied!';
+                setTimeout(() => { copyBtn.textContent = '📋 Copy'; }, 2500);
+            }
+            showToast("Direct remote link copied! Open it on your phone.", "📋");
+        } catch (e) {
+            showToast("Please copy the URL from the input box.", "ℹ️");
+        }
+    }
+}
+
 function toggleRemoteQR() {
     initAudio();
     const qrContainer = document.getElementById('qr-container');
-    if (qrContainer.style.display === 'none') {
+    if (!qrContainer) return;
+    
+    if (qrContainer.style.display === 'none' || qrContainer.style.display === '') {
         qrContainer.style.display = 'block';
         
-        let url = window.location.origin + window.location.pathname + '?remote=true';
-        QRCode.toCanvas(document.getElementById('qrcode'), url, function (error) {
-            if (error) console.error(error);
-            console.log('QR Code generated for URL:', url);
-        });
+        let url = getRemoteUrl();
+        let inputEl = document.getElementById('remote-url-input');
+        let linkEl = document.getElementById('remote-open-link');
+        if (inputEl) inputEl.value = url;
+        if (linkEl) linkEl.href = url;
+        
+        let canvas = document.getElementById('qrcode');
+        if (canvas && typeof QRCode !== 'undefined' && QRCode.toCanvas) {
+            QRCode.toCanvas(canvas, url, {
+                width: 160,
+                margin: 1,
+                color: {
+                    dark: '#000000',
+                    light: '#ffffff'
+                }
+            }, function (error) {
+                if (error) console.error("QR Code error:", error);
+            });
+        }
     } else {
         qrContainer.style.display = 'none';
     }
