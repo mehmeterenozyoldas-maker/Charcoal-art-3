@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procedural Charcoal Engine</title>
+    <meta name="description" content="Procedural charcoal art engine with embodied mobile controls, real-time hand tracking, and acoustic friction synthesis">
+    <meta property="og:title" content="Procedural Charcoal Engine">
+    <meta property="og:description" content="Procedural charcoal art engine with embodied mobile controls, real-time hand tracking, and acoustic friction synthesis">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #111;
+        }
+        canvas {
+            display: block;
+        }
+        #ui {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px;
+            border-radius: 30px;
+            backdrop-filter: blur(8px);
+            font-family: sans-serif;
+            z-index: 10;
+            width: 80%;
+            max-width: 800px;
+        }
+        .preset-btn {
+            background: none;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.7);
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            outline: none;
+        }
+        .preset-btn:hover {
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        .preset-btn.active {
+            background: rgba(255, 255, 255, 0.9);
+            color: #000;
+            border-color: #fff;
+        }
+        #toast-banner {
+            position: absolute;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: rgba(20, 20, 24, 0.95);
+            color: #f1f1f1;
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 150;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+            opacity: 0;
+            pointer-events: none;
+            max-width: 90vw;
+            text-align: center;
+        }
+        #toast-banner.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+<div id="toast-banner">
+    <span id="toast-icon">ℹ️</span>
+    <span id="toast-message">Notification</span>
+</div>
+<div id="ui">
+    <button class="preset-btn active" onclick="setAnimal('unicorn')">Unicorn</button>
+    <button class="preset-btn" onclick="setAnimal('cat')">Cat</button>
+    <button class="preset-btn" onclick="setAnimal('bird')">Bird</button>
+    <button class="preset-btn" onclick="setAnimal('dog')">Dog</button>
+    <button class="preset-btn" onclick="setAnimal('elephant')">Elephant</button>
+    <button class="preset-btn" onclick="setAnimal('horse')">Horse</button>
+    <button class="preset-btn" onclick="setAnimal('rabbit')">Rabbit</button>
+    <button class="preset-btn" onclick="setAnimal('butterfly')">Butterfly</button>
+    <button class="preset-btn" onclick="setAnimal('dolphin')">Dolphin</button>
+    <button class="preset-btn" onclick="setAnimal('bear')">Bear</button>
+    <div style="width: 1px; background: rgba(255,255,255,0.2); margin: 0 4px;"></div>
+    <button class="preset-btn" id="btn-freehand" onclick="setMode('freehand')">Freehand</button>
+    <button class="preset-btn" id="btn-remote" onclick="toggleRemoteQR()">Connect iPhone</button>
+    <button class="preset-btn" id="btn-clear" onclick="clearFreehand()" style="display:none; background: rgba(255, 50, 50, 0.2);">Clear</button>
+</div>
+
+<div id="qr-container" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(255,255,255,0.9); padding:20px; border-radius:20px; text-align:center; font-family:sans-serif; z-index:20;">
+    <h3 style="margin-top:0; color:#000;">Scan to sketch with iPhone</h3>
+    <canvas id="qrcode"></canvas>
+    <p style="margin-bottom:0; color:#333; font-size:14px;">Use your phone as a trackpad.</p>
+    <button onclick="toggleRemoteQR()" style="margin-top:15px; padding:8px 16px; border:none; background:#333; color:white; border-radius:10px; cursor:pointer;">Close</button>
+</div>
+
+<div id="mobile-remote" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:#111; z-index:100; color:white; font-family:sans-serif; flex-direction:column; align-items:center; justify-content:center; touch-action:none;">
+    <h2>Charcoal Remote</h2>
+    
+    <div id="permission-view" style="display:flex; flex-direction:column; align-items:center; gap:20px;">
+        <p style="text-align:center; max-width:80%; color:#ccc;">To enable Gyroscope and Breath interactions, please allow sensor access.</p>
+        <button onclick="requestPermissions()" style="padding: 15px 30px; border-radius: 30px; background: rgba(255, 255, 255, 0.9); color: black; border: none; font-size: 18px; font-weight:bold;">Enable Sensors & Mic</button>
+        <button onclick="showPad()" style="padding: 10px 20px; border-radius: 30px; background: transparent; color: #888; border: 1px solid #555; font-size: 14px;">Skip for now</button>
+    </div>
+
+    <div id="pad-view" style="display:none; flex-direction:column; align-items:center; width:100%;">
+        <div style="width: 80vw; height: 60vh; border: 2px dashed rgba(255,255,255,0.3); border-radius: 20px; display: flex; align-items:center; justify-content:center; text-align:center; padding: 20px; margin-bottom: 20px;" id="touch-pad">
+            <span style="pointer-events:none; color:#777;">
+                • Drag to draw<br>
+                • Use 2 fingers to smudge<br>
+                • Tilt phone to angle chalk<br>
+                • Blow into mic to scatter dust
+            </span>
+        </div>
+        <button onclick="sendClearEvent()" style="padding: 15px 30px; border-radius: 30px; background: rgba(255, 50, 50, 0.5); color: white; border: none; font-size: 18px;">Clear Canvas</button>
+    </div>
+</div>
+
+<div id="experimental-ui" style="position: absolute; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 10;">
+    <button class="preset-btn" id="btn-cocreate" onclick="toggleCoCreate()" style="background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);">Jazz Co-Create: OFF</button>
+    <button class="preset-btn" id="btn-camera" onclick="toggleCamera()" style="background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);">Camera Draw</button>
+</div>
+
+<script>
+/**
+ * Houdini.js - Procedural Charcoal Engine
+ * Vibe modifier: Implemented a fibrous paper canvas with dynamic FBM lighting,
+ * and a cursive Lissajous path with generative pressure and edge erosion math.
+ */
+
+const sharedGLSL = `
+float random (in vec2 st) {
+    return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+}
+
+float noise (in vec2 st) {
+    vec2 i = floor(st);
+    vec2 f = fract(st);
+
+    float a = random(i);
+    float b = random(i + vec2(1.0, 0.0));
+    float c = random(i + vec2(0.0, 1.0));
+    float d = random(i + vec2(1.0, 1.0));
+
+    vec2 u = f * f * (3.0 - 2.0 * f);
+
+    return mix(a, b, u.x) +
+            (c - a)* u.y * (1.0 - u.x) +
+            (d - b) * u.x * u.y;
+}
+
+float fbm (in vec2 st) {
+    float value = 0.0;
+    float amplitude = 0.5;
+    for (int i = 0; i < 5; i++) {
+        value += amplitude * noise(st);
+        st *= 2.0;
+        amplitude *= 0.5;
+    }
+    return value;
+}
+`;
+
+const genericVert = `
+attribute vec3 aPosition;
+attribute vec2 aTexCoord;
+attribute vec4 aVertexColor;
+
+uniform mat4 uModelViewMatrix;
+uniform mat4 uProjectionMatrix;
+
+varying vec2 vTexCoord;
+varying vec4 vColor;
+
+void main() {
+    gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1.0);
+    vTexCoord = aTexCoord;
+    vColor = aVertexColor;
+}
+`;
+
+const paperFrag = `
+precision highp float;
+varying vec2 vTexCoord;
+uniform vec2 u_resolution;
+uniform vec2 u_lightPos;
+
+${sharedGLSL}
+
+void main() {
+    vec2 st = gl_FragCoord.xy / u_resolution.xy;
+    st.x *= u_resolution.x / u_resolution.y;
+    
+    float n2 = fbm(st * 10.0);
+    
+    // Calculate pseudo-normals using FBM derivative
+    float eps = 0.005;
+    float h = fbm(st * 15.0);
+    float hx = fbm(st * 15.0 + vec2(eps, 0.0));
+    float hy = fbm(st * 15.0 + vec2(0.0, eps));
+    
+    vec3 normal = normalize(vec3(hx - h, hy - h, eps * 2.0));
+    
+    // Dynamic interactive light
+    vec2 lightNorm = u_lightPos;
+    lightNorm.x *= u_resolution.x / u_resolution.y;
+    vec3 lightDir = normalize(vec3(lightNorm.x - st.x, lightNorm.y - st.y, 0.15));
+    
+    float diff = max(dot(normal, lightDir), 0.0);
+    
+    // Distance attenuation (vignette around light source)
+    float lightDist = distance(lightNorm, st);
+    float attenuation = smoothstep(1.0, 0.1, lightDist);
+    
+    // Realism: Faint paper sheen
+    float spec = pow(max(dot(normal, normalize(lightDir + vec3(0.0, 0.0, 1.0))), 0.0), 12.0) * 0.15;
+    
+    vec3 paperBase = vec3(0.93, 0.91, 0.87); // Warm, natural fibrous paper
+    vec3 col = paperBase * (diff * 0.4 + 0.6) * (attenuation * 0.2 + 0.8) - (n2 * 0.05);
+    col += spec * attenuation; 
+    
+    gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+const charcoalFrag = `
+precision highp float;
+varying vec2 vTexCoord;
+varying vec4 vColor;
+uniform vec2 u_resolution;
+uniform float u_wind;
+
+${sharedGLSL}
+
+void main() {
+    vec2 screenUV = gl_FragCoord.xy / u_resolution.xy;
+    vec2 st = screenUV;
+    st.x *= u_resolution.x / u_resolution.y;
+    
+    // 1. Reconstruct paper height to break the stroke on peaks/valleys
+    float paperHeight = fbm(st * 15.0); 
+    
+    // 2. Stroke mask (0 at ribbon edge, 1 at center)
+    // vTexCoord.y goes 0 to 1 across the ribbon.
+    float distCenter = abs(vTexCoord.y - 0.5) * 2.0; 
+    float strokeMask = smoothstep(0.5, 0.0, distCenter); 
+    
+    // 3. Directional Grain (follows the ribbon UVs)
+    float grain = noise(vec2(vTexCoord.x * 60.0, vTexCoord.y * 120.0));
+    
+    // 4. Base Charcoal Erosion (multiplication magic)
+    float threshold = 0.15;
+    float smoothness = 0.4;
+    float charcoalBase = smoothstep(threshold, threshold + smoothness, strokeMask * (paperHeight + 0.1) * (grain + 0.6));
+    
+    // 5. High-frequency Edge Crunch
+    float edgeNoise = fbm(st * 45.0);
+    float edgeErosion = smoothstep(0.3, 0.7, strokeMask + edgeNoise * 0.6 - 0.3);
+    
+    // 6. Loose Dust Particulates (scattered outside the core stroke, blown by breath wind)
+    vec2 dustSt = st + vec2(u_wind * 0.1, 0.0);
+    float speckleNoise = random(dustSt * 800.0);
+    
+    // Wind pushes the dust probability distribution sideways
+    float dustProbCenter = distCenter - (u_wind * 0.3);
+    float dustProb = smoothstep(0.9, 0.1, dustProbCenter) * edgeNoise; 
+    float dust = step(0.985, speckleNoise) * dustProb * (0.7 + abs(u_wind)); // Wind makes more dust visible
+    
+    float finalAlpha = (charcoalBase * edgeErosion) + dust;
+    
+    if (finalAlpha < 0.01) discard; // Save fill rate
+    
+    float temp = vColor.r; // Extract friction temperature
+    
+    vec3 charcoalColor = vec3(0.12, 0.11, 0.13); // Deep compressed charcoal
+    
+    // Realism: Specular Sheen on thick graphite/charcoal
+    vec3 lightDir = normalize(vec3(0.5, 0.7, 0.5));
+    vec3 normal = normalize(vec3(0.0, 1.0 - distCenter, 2.0));
+    float spec = pow(max(dot(normal, lightDir), 0.0), 6.0) * 0.25 * (1.0 - edgeErosion);
+    
+    charcoalColor += spec;
+    
+    // Magic: Ember Glow when drawing fast
+    vec3 emberCore = vec3(1.0, 0.9, 0.4);
+    vec3 emberOuter = vec3(1.0, 0.2, 0.0);
+    vec3 glowColor = mix(emberOuter, emberCore, temp);
+    
+    vec3 finalRGB = mix(charcoalColor, glowColor, temp * 1.5);
+    
+    gl_FragColor = vec4(finalRGB, finalAlpha * 0.9);
+}
+`;
+
+let paperSh;
+let charcoalSh;
+let pathData = [];
+let drawProgress = 0;
+let currentAnimal = 'unicorn';
+let appMode = 'preset'; // 'preset' or 'freehand'
+let freehandStrokes = [];
+let currentStroke = null;
+let isDrawing = false;
+let globalPointIndex = 0;
+let rotX = 0;
+let rotY = 0;
+let socket;
+let isRemote = false;
+
+// Check if we are running as remote
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('remote') === 'true') {
+    isRemote = true;
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('ui').style.display = 'none';
+        document.getElementById('mobile-remote').style.display = 'flex';
+        initSocketRemote();
+    });
+}
+
+function showPad() {
+    document.getElementById('permission-view').style.display = 'none';
+    document.getElementById('pad-view').style.display = 'flex';
+}
+
+async function requestPermissions() {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        try {
+            const permissionState = await DeviceOrientationEvent.requestPermission();
+            if (permissionState === 'granted') {
+                window.addEventListener('deviceorientation', (e) => {
+                    if (socket) socket.emit('gyro_event', { beta: e.beta, gamma: e.gamma });
+                });
+            }
+        } catch (e) { console.error(e); }
+    } else {
+        window.addEventListener('deviceorientation', (e) => {
+            if (socket) socket.emit('gyro_event', { beta: e.beta, gamma: e.gamma });
+        });
+    }
+    
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const analyser = audioCtx.createAnalyser();
+        const source = audioCtx.createMediaStreamSource(stream);
+        source.connect(analyser);
+        analyser.fftSize = 256;
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        setInterval(() => {
+            analyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for(let i=0; i<dataArray.length; i++) sum += dataArray[i];
+            let vol = sum / dataArray.length;
+            if(vol > 20 && socket) socket.emit('breath_event', { volume: vol });
+        }, 50);
+    } catch (e) { console.error("Mic error", e); }
+    
+    showPad();
+}
+
+function initSocketRemote() {
+    socket = io();
+    
+    let pad = document.getElementById('touch-pad');
+    let lastX = 0, lastY = 0;
+    let lastSmudgeX = 0, lastSmudgeY = 0;
+
+    pad.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (e.touches.length === 1) {
+            let touch = e.touches[0];
+            let rect = pad.getBoundingClientRect();
+            lastX = (touch.clientX - rect.left) / rect.width - 0.5;
+            lastY = (touch.clientY - rect.top) / rect.height - 0.5;
+            socket.emit('draw_event', { type: 'start', x: lastX, y: lastY });
+        } else if (e.touches.length === 2) {
+            let touch1 = e.touches[0];
+            let touch2 = e.touches[1];
+            lastSmudgeX = (touch1.clientX + touch2.clientX) / 2;
+            lastSmudgeY = (touch1.clientY + touch2.clientY) / 2;
+        }
+    }, {passive: false});
+
+    pad.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        let rect = pad.getBoundingClientRect();
+        
+        if (e.touches.length === 1) {
+            let touch = e.touches[0];
+            lastX = (touch.clientX - rect.left) / rect.width - 0.5;
+            lastY = (touch.clientY - rect.top) / rect.height - 0.5;
+            socket.emit('draw_event', { type: 'move', x: lastX, y: lastY });
+        } else if (e.touches.length === 2) {
+            let touch1 = e.touches[0];
+            let touch2 = e.touches[1];
+            let cx = (touch1.clientX + touch2.clientX) / 2;
+            let cy = (touch1.clientY + touch2.clientY) / 2;
+            
+            let dx = (cx - lastSmudgeX) / rect.width;
+            let dy = (cy - lastSmudgeY) / rect.height;
+            let nx = (cx - rect.left) / rect.width - 0.5;
+            let ny = (cy - rect.top) / rect.height - 0.5;
+            
+            socket.emit('smudge_event', { dx: dx, dy: dy, x: nx, y: ny });
+            lastSmudgeX = cx;
+            lastSmudgeY = cy;
+        }
+    }, {passive: false});
+
+    pad.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        if (e.touches.length === 0) {
+            socket.emit('draw_event', { type: 'end' });
+        }
+    }, {passive: false});
+}
+
+function sendClearEvent() {
+    if (socket) socket.emit('clear_event');
+}
+
+let audioCtx, noiseNode, filterNode, gainNode;
+let currentWind = 0.0;
+let remoteTilt = { beta: 0, gamma: 0 };
+let audioStarted = false;
+
+let activePhantom = null;
+let coCreationEnabled = false;
+
+function toggleCoCreate() {
+    coCreationEnabled = !coCreationEnabled;
+    let btn = document.getElementById('btn-cocreate');
+    if (coCreationEnabled) {
+        btn.classList.add('active');
+        btn.innerText = "Jazz Co-Create: ON";
+    } else {
+        btn.classList.remove('active');
+        btn.innerText = "Jazz Co-Create: OFF";
+    }
+}
+
+function triggerCoCreation() {
+    if (!coCreationEnabled || !currentStroke || currentStroke.length < 3) return;
+    
+    let last = currentStroke[currentStroke.length-1];
+    let prev = currentStroke[currentStroke.length-3];
+    let vx = (last.x - prev.x);
+    let vy = (last.y - prev.y);
+    
+    let len = Math.sqrt(vx*vx + vy*vy);
+    if(len < 1) return; 
+    
+    vx = vx/len; vy = vy/len;
+    let speed = min(len * 2.0, 15.0); 
+    
+    activePhantom = {
+        stroke: currentStroke,
+        x: last.x,
+        y: last.y,
+        vx: vx * speed,
+        vy: vy * speed,
+        life: 150, 
+        angle: Math.atan2(vy, vx),
+        speed: speed,
+        noiseOffset: random(1000)
+    };
+}
+
+function initAudio() {
+    if (audioStarted) return;
+    audioStarted = true;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let bufferSize = audioCtx.sampleRate * 2; 
+    let buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    let data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    
+    noiseNode = audioCtx.createBufferSource();
+    noiseNode.buffer = buffer;
+    noiseNode.loop = true;
+    
+    filterNode = audioCtx.createBiquadFilter();
+    filterNode.type = 'bandpass';
+    filterNode.frequency.value = 400;
+    filterNode.Q.value = 0.5;
+    
+    gainNode = audioCtx.createGain();
+    gainNode.gain.value = 0;
+    
+    noiseNode.connect(filterNode);
+    filterNode.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    noiseNode.start();
+}
+
+function initSocketDisplay() {
+    socket = io();
+    socket.on('draw_event', (data) => {
+        // Auto-switch to freehand mode on remote activity
+        if (appMode !== 'freehand') {
+            setMode('freehand');
+        }
+        
+        let screenX = data.x * width;
+        let screenY = data.y * height;
+        
+        if (data.type === 'start') {
+            currentStroke = [];
+            freehandStrokes.push(currentStroke);
+            addFreehandPoint(screenX, screenY);
+            isDrawing = true;
+        } else if (data.type === 'move') {
+            if (currentStroke) {
+                addFreehandPoint(screenX, screenY);
+            }
+        } else if (data.type === 'end') {
+            isDrawing = false;
+            triggerCoCreation();
+        }
+    });
+    
+    socket.on('gyro_event', (data) => {
+        remoteTilt.beta = data.beta; // Front/Back tilt
+        remoteTilt.gamma = data.gamma; // Left/Right tilt
+    });
+    
+    socket.on('breath_event', (data) => {
+        // Map volume (20-100+) to wind strength
+        let targetWind = map(data.volume, 20, 100, 0.0, 5.0, true);
+        currentWind = max(currentWind, targetWind); 
+    });
+
+    socket.on('smudge_event', (data) => {
+        let sX = data.x * width;
+        let sY = data.y * height;
+        let radius = 100;
+        
+        let dxWorld = data.dx * width;
+        let dyWorld = data.dy * height;
+        
+        // Spawn physical dust particles at the smudge location based on velocity
+        let speed = Math.sqrt(dxWorld*dxWorld + dyWorld*dyWorld);
+        if (speed > 5) {
+            spawnDust(sX, sY, dxWorld * 0.1, dyWorld * 0.1, min(speed / 10.0, 3.0));
+        }
+        
+        // Temporarily shift all nearby points to simulate a smudge
+        freehandStrokes.forEach(stroke => {
+            stroke.forEach(p => {
+                let d = dist(sX, sY, p.x, p.y);
+                if(d < radius) {
+                    let force = pow(1.0 - d/radius, 2) * 30.0;
+                    p.x += data.dx * width * force;
+                    p.y += data.dy * height * force;
+                }
+            });
+            // Recompute tangents for smudged strokes
+            for(let i = 0; i < stroke.length; i++) {
+                let prev = i > 0 ? stroke[i-1] : stroke[i];
+                let next = i < stroke.length-1 ? stroke[i+1] : stroke[i];
+                let dx = next.x - prev.x;
+                let dy = next.y - prev.y;
+                let distLen = Math.sqrt(dx*dx + dy*dy);
+                if(distLen > 0.001) {
+                    stroke[i].tx = dx / distLen;
+                    stroke[i].ty = dy / distLen;
+                }
+            }
+        });
+    });
+    
+    socket.on('clear_event', () => {
+        if (appMode === 'freehand') {
+            clearFreehand();
+        }
+    });
+}
+
+function setup() {
+    if (isRemote) {
+        noCanvas();
+        return; // Don't setup p5 canvas on remote
+    }
+    
+    initSocketDisplay();
+
+    createCanvas(windowWidth, windowHeight, WEBGL);
+    pixelDensity(1); // Standardize pixel density for shaders
+    
+    paperSh = createShader(genericVert, paperFrag);
+    charcoalSh = createShader(genericVert, charcoalFrag);
+    
+    pathData = generateAnimalPath(currentAnimal, 4000, {width: width, height: height});
+    
+    noStroke();
+    
+    // Ensure standard alpha blending is active
+    let gl = this._renderer.GL;
+    gl.disable(gl.DEPTH_TEST);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+}
+
+function mousePressed() {
+    initAudio();
+    if (appMode === 'freehand' && mouseY < height - 70) {
+        isDrawing = true;
+        currentStroke = [];
+        freehandStrokes.push(currentStroke);
+        addFreehandPoint(mouseX - width/2, mouseY - height/2);
+    }
+}
+
+function mouseDragged() {
+    if (isDrawing && appMode === 'freehand') {
+        addFreehandPoint(mouseX - width/2, mouseY - height/2);
+    }
+}
+
+function mouseReleased() {
+    isDrawing = false;
+    triggerCoCreation();
+}
+
+let dustParticles = [];
+
+function spawnDust(x, y, vx, vy, pressure) {
+    let amount = Math.floor(random(1, 4) * pressure);
+    for(let i=0; i<amount; i++) {
+        dustParticles.push({
+            x: x + random(-10, 10),
+            y: y + random(-10, 10),
+            z: random(10, 30),
+            vx: vx * random(0.1, 0.3) + random(-2, 2),
+            vy: vy * random(0.1, 0.3) + random(-2, 2),
+            vz: random(-1, 1),
+            life: 255,
+            size: random(1.5, 4.0),
+            rot: random(TWO_PI),
+            rotVel: random(-0.2, 0.2)
+        });
+    }
+}
+
+function addFreehandPoint(x, y, pressureOverride = null) {
+    if (!currentStroke) return;
+    
+    let distVal = 0;
+    let vx = 0, vy = 0;
+    if (currentStroke.length > 0) {
+        let last = currentStroke[currentStroke.length - 1];
+        distVal = dist(last.x, last.y, x, y);
+        vx = x - last.x;
+        vy = y - last.y;
+        if (distVal < 4) return;
+    }
+    
+    // Magic: Velocity creates friction heat
+    let heat = min(distVal / 25.0, 1.0);
+    
+    currentStroke.push({x: x, y: y, idx: globalPointIndex++, pressure: pressureOverride, temp: heat});
+    
+    if (distVal > 15 || (pressureOverride && pressureOverride > 1.2)) {
+        spawnDust(x, y, vx, vy, pressureOverride || 1.0);
+    }
+    
+    if (audioStarted && isDrawing) {
+        // Psycho-Acoustic Friction: Map drawing velocity (distance) to pitch and volume
+        let targetFreq = map(distVal, 4, 50, 200, 1500, true);
+        let targetGain = map(distVal, 4, 50, 0.05, 0.3, true);
+        filterNode.frequency.value = lerp(filterNode.frequency.value, targetFreq, 0.3);
+        gainNode.gain.value = lerp(gainNode.gain.value, targetGain, 0.3);
+    }
+    
+    for(let i = 0; i < currentStroke.length; i++) {
+        let prev = i > 0 ? currentStroke[i-1] : currentStroke[i];
+        let next = i < currentStroke.length-1 ? currentStroke[i+1] : currentStroke[i];
+        let dx = next.x - prev.x;
+        let dy = next.y - prev.y;
+        let distLen = Math.sqrt(dx*dx + dy*dy);
+        if(distLen > 0.001) {
+            currentStroke[i].tx = dx / distLen;
+            currentStroke[i].ty = dy / distLen;
+        } else {
+            currentStroke[i].tx = 1;
+            currentStroke[i].ty = 0;
+        }
+    }
+}
+
+function catmullRom(p0, p1, p2, p3, t) {
+    let t2 = t * t;
+    let t3 = t2 * t;
+    return 0.5 * (
+        (2 * p1) +
+        (-p0 + p2) * t +
+        (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
+        (-p0 + 3 * p1 - 3 * p2 + p3) * t3
+    );
+}
+
+const animalShapes = {
+    unicorn: [
+        [-0.3, 0.2], [-0.4, 0.0], [-0.5, -0.1], [-0.6, -0.2], [-0.5, -0.3], [-0.45, -0.4], [-0.65, -0.7], [-0.35, -0.45], [-0.25, -0.6], [-0.15, -0.4], [0.1, -0.2], [0.35, -0.2], [0.5, -0.1], [0.7, -0.05], [0.85, 0.15], [0.7, 0.4], [0.55, 0.2], [0.55, 0.5], [0.6, 0.8], [0.45, 0.8], [0.4, 0.5], [0.1, 0.45], [0.0, 0.8], [-0.15, 0.8], [-0.1, 0.4], [-0.3, 0.2]
+    ],
+    cat: [
+        [-0.2, -0.5], [-0.3, -0.7], [-0.1, -0.6], [0.0, -0.7], [0.1, -0.5], [0.3, -0.3], [0.4, 0.2], [0.4, 0.5], [0.6, 0.7], [0.7, 0.4], [0.6, 0.1], [0.5, 0.2], [0.5, 0.6], [0.2, 0.6], [-0.2, 0.6], [-0.3, 0.5], [-0.2, 0.2], [-0.3, -0.1], [-0.2, -0.5]
+    ],
+    bird: [
+        [-0.6, -0.1], [-0.5, -0.2], [-0.3, -0.2], [0.0, -0.1], [0.5, 0.1], [0.7, 0.2], [0.5, 0.3], [0.2, 0.2], [0.1, 0.5], [0.2, 0.8], [-0.1, 0.4], [-0.2, 0.2], [-0.4, 0.1], [-0.6, -0.1]
+    ],
+    dog: [
+        [-0.5, -0.2], [-0.6, -0.3], [-0.4, -0.4], [-0.3, -0.5], [-0.2, -0.3], [0.2, -0.3], [0.5, -0.2], [0.7, -0.4], [0.6, -0.1], [0.5, 0.2], [0.5, 0.7], [0.3, 0.7], [0.3, 0.3], [0.0, 0.2], [-0.2, 0.3], [-0.2, 0.7], [-0.4, 0.7], [-0.3, 0.1], [-0.4, -0.1], [-0.5, -0.2]
+    ],
+    elephant: [
+        [-0.5, 0.6], [-0.6, 0.6], [-0.6, 0.2], [-0.7, 0.0], [-0.5, -0.1], [-0.6, -0.4], [-0.2, -0.5], [0.2, -0.4], [0.6, -0.2], [0.7, 0.2], [0.8, 0.5], [0.7, 0.5], [0.6, 0.3], [0.5, 0.6], [0.3, 0.6], [0.3, 0.3], [-0.1, 0.3], [-0.1, 0.6], [-0.3, 0.6], [-0.3, 0.1], [-0.5, 0.6]
+    ],
+    horse: [
+        [-0.4, 0.2], [-0.5, 0.0], [-0.6, -0.2], [-0.4, -0.3], [-0.2, -0.1], [0.3, -0.1], [0.6, 0.0], [0.7, 0.3], [0.8, 0.6], [0.5, 0.6], [0.4, 0.3], [0.1, 0.4], [0.0, 0.7], [-0.2, 0.7], [-0.3, 0.4], [-0.4, 0.2]
+    ],
+    rabbit: [
+        [-0.2, -0.2], [-0.3, -0.5], [-0.1, -0.6], [0.0, -0.3], [0.1, -0.6], [0.3, -0.5], [0.2, -0.2], [0.4, 0.1], [0.5, 0.5], [0.2, 0.6], [0.0, 0.4], [-0.2, 0.6], [-0.4, 0.4], [-0.2, 0.2], [-0.2, -0.2]
+    ],
+    butterfly: [
+        [0.0, -0.5], [-0.3, -0.6], [-0.6, -0.3], [-0.4, 0.1], [-0.1, 0.0], [-0.3, 0.4], [-0.1, 0.6], [0.0, 0.3], [0.1, 0.6], [0.3, 0.4], [0.1, 0.0], [0.4, 0.1], [0.6, -0.3], [0.3, -0.6], [0.0, -0.5]
+    ],
+    dolphin: [
+        [-0.6, 0.2], [-0.4, 0.1], [-0.2, -0.1], [0.2, -0.2], [0.1, -0.4], [0.3, -0.2], [0.6, -0.1], [0.8, -0.3], [0.9, -0.1], [0.8, 0.1], [0.5, 0.2], [0.1, 0.4], [-0.3, 0.4], [-0.6, 0.2]
+    ],
+    bear: [
+        [-0.4, -0.2], [-0.5, -0.4], [-0.3, -0.5], [-0.1, -0.4], [0.3, -0.4], [0.5, -0.3], [0.6, -0.1], [0.7, 0.3], [0.5, 0.7], [0.3, 0.7], [0.2, 0.4], [-0.1, 0.4], [-0.2, 0.7], [-0.4, 0.7], [-0.5, 0.4], [-0.4, 0.1], [-0.4, -0.2]
+    ]
+};
+
+function generateAnimalPath(animalId, length, bounds) {
+    let pts = [];
+    
+    // Generative Silhouette (X, Y normalized coordinates)
+    const animalOutline = animalShapes[animalId] || animalShapes.unicorn;
+
+    let scale = Math.min(bounds.width, bounds.height) * 0.45;
+    let passes = 3; // Number of sketchy passes around the outline
+    let totalSegments = (animalOutline.length - 1) * passes;
+    let pointsPerSegment = Math.floor(length / totalSegments);
+    let t_noise = 0;
+    
+    for (let pass = 0; pass < passes; pass++) {
+        for (let i = 0; i < animalOutline.length - 1; i++) {
+            let p0 = animalOutline[Math.max(i - 1, 0)];
+            let p1 = animalOutline[i];
+            let p2 = animalOutline[i + 1];
+            let p3 = animalOutline[Math.min(i + 2, animalOutline.length - 1)];
+            
+            for (let j = 0; j < pointsPerSegment; j++) {
+                let t = j / pointsPerSegment;
+                
+                let x = catmullRom(p0[0], p1[0], p2[0], p3[0], t) * scale;
+                let y = catmullRom(p0[1], p1[1], p2[1], p3[1], t) * scale;
+                
+                // Add sketchy hand jitter using noise
+                let noiseFreq = 0.02;
+                // Wider jitter on subsequent passes to simulate charcoal smudging out
+                let noiseAmp = 8.0 + (pass * 6.0); 
+                x += (noise(t_noise * noiseFreq) - 0.5) * noiseAmp;
+                y += (noise((t_noise + 100) * noiseFreq) - 0.5) * noiseAmp;
+                
+                // Add a low-frequency drift to warp the proportions slightly per pass
+                x += Math.sin(t_noise * 0.005) * (pass * 10);
+                y += Math.cos(t_noise * 0.005) * (pass * 10);
+                
+                pts.push({x, y});
+                t_noise += 1.0;
+            }
+        }
+    }
+    
+    // Calculate tangents for perpendicular extrusion
+    for(let i=0; i<pts.length; i++) {
+        let prev = i > 0 ? pts[i-1] : pts[i];
+        let next = i < pts.length-1 ? pts[i+1] : pts[i];
+        let dx = next.x - prev.x;
+        let dy = next.y - prev.y;
+        let dist = Math.sqrt(dx*dx + dy*dy);
+        if(dist > 0.001) {
+            pts[i].tx = dx / dist;
+            pts[i].ty = dy / dist;
+        } else {
+            pts[i].tx = 1;
+            pts[i].ty = 0;
+        }
+    }
+    return pts;
+}
+
+function drawStroke(points, limit) {
+    if (points.length < 2) return;
+    beginShape(TRIANGLE_STRIP);
+    for (let i = 0; i < limit; i++) {
+        let p = points[i];
+        let nx = -p.ty;
+        let ny = p.tx;
+        
+        let noiseIdx = p.idx !== undefined ? p.idx : i; 
+        
+        let pressure = (p.pressure !== undefined && p.pressure !== null) 
+            ? p.pressure 
+            : noise(noiseIdx * 0.02 + 200) * (0.5 + 0.5 * Math.sin(noiseIdx * 0.01));
+        
+        // Map gyro tilt (gamma) to charcoal angle/width multiplier
+        let tiltFactor = map(abs(remoteTilt.gamma), 0, 90, 1.0, 3.0, true);
+        
+        let baseW = 10.0 * (0.4 + pressure * 1.6);
+        let w = baseW * tiltFactor; 
+        let u = noiseIdx / 150.0; 
+        
+        let zDepth = pressure * 30.0; // Spatial UX: Map pressure to Z-depth
+        
+        // Map temperature to red channel in vertex color
+        let temp = p.temp || 0.0;
+        fill(temp * 255, 0, 0, 255);
+        
+        vertex(p.x + nx * w, p.y + ny * w, zDepth, u, 0.0);
+        vertex(p.x - nx * w, p.y - ny * w, zDepth, u, 1.0);
+    }
+    endShape();
+}
+
+function draw() {
+    if (isRemote) return;
+    
+    // Decay wind back to 0 over time
+    currentWind = lerp(currentWind, 0.0, 0.02);
+    
+    // Spatial UX: Gyroscopic Parallax (Window Effect)
+    // Ease rotation to 0 when drawing so the hand meets the paper perfectly
+    let targetRotX = isDrawing ? 0 : map(mouseY, 0, height, 0.08, -0.08);
+    let targetRotY = isDrawing ? 0 : map(mouseX, 0, width, -0.08, 0.08);
+    
+    rotX = lerp(rotX, targetRotX, 0.05);
+    rotY = lerp(rotY, targetRotY, 0.05);
+    
+    rotateX(rotX);
+    rotateY(rotY);
+
+    // Interactive Shader Shadows
+    let lx = mouseX / width;
+    let ly = 1.0 - (mouseY / height);
+
+    // 1. Render Base Paper Layer
+    shader(paperSh);
+    paperSh.setUniform('u_resolution', [width, height]);
+    paperSh.setUniform('u_lightPos', [lx, ly]);
+    
+    // We need a larger paper plane so we don't see the edges when rotating
+    rect(-width, -height, width * 2, height * 2); 
+    
+    // 2. Render Charcoal Layer (The Sweep)
+    shader(charcoalSh);
+    charcoalSh.setUniform('u_resolution', [width, height]);
+    charcoalSh.setUniform('u_wind', currentWind);
+    charcoalSh.setUniform('u_lightPos', [lx, ly]);
+    
+    // Audio Friction decay
+    if (audioStarted && !isDrawing) {
+        gainNode.gain.value = lerp(gainNode.gain.value, 0.0, 0.1);
+    }
+    
+    if (appMode === 'preset') {
+        let pointsPerFrame = 25;
+        drawProgress = min(pathData.length, drawProgress + pointsPerFrame);
+        
+        drawStroke(pathData, drawProgress);
+    } else if (appMode === 'freehand') {
+        
+        if (activePhantom && !isDrawing) {
+            // Jazz duet!
+            activePhantom.noiseOffset += 0.02;
+            let curl = (noise(activePhantom.noiseOffset) - 0.5) * 0.2;
+            activePhantom.angle += curl;
+            
+            activePhantom.vx = Math.cos(activePhantom.angle) * activePhantom.speed;
+            activePhantom.vy = Math.sin(activePhantom.angle) * activePhantom.speed;
+            
+            activePhantom.x += activePhantom.vx;
+            activePhantom.y += activePhantom.vy;
+            
+            activePhantom.speed *= 0.985; 
+            
+            let p = {
+                x: activePhantom.x, 
+                y: activePhantom.y, 
+                idx: globalPointIndex++, 
+                pressure: map(activePhantom.speed, 0, 15, 0.1, 1.5, true),
+                temp: 1.0 // Magic phantom always burns hot
+            };
+            
+            let stroke = activePhantom.stroke;
+            stroke.push(p);
+            
+            // Recalculate tangents for the end of the stroke
+            for(let i = stroke.length - 3; i < stroke.length; i++) {
+                if(i < 0) continue;
+                let prev = i > 0 ? stroke[i-1] : stroke[i];
+                let next = i < stroke.length-1 ? stroke[i+1] : stroke[i];
+                let dx = next.x - prev.x;
+                let dy = next.y - prev.y;
+                let distLen = Math.sqrt(dx*dx + dy*dy);
+                if(distLen > 0.001) {
+                    stroke[i].tx = dx / distLen;
+                    stroke[i].ty = dy / distLen;
+                } else {
+                    stroke[i].tx = 1; stroke[i].ty = 0;
+                }
+            }
+            
+            activePhantom.life--;
+            if (activePhantom.life <= 0 || activePhantom.speed < 0.5) {
+                activePhantom = null;
+            }
+        }
+
+        // Cool down temperatures and draw strokes
+        for (let i = 0; i < freehandStrokes.length; i++) {
+            for (let j = 0; j < freehandStrokes[i].length; j++) {
+                if (freehandStrokes[i][j].temp > 0) {
+                    freehandStrokes[i][j].temp *= 0.95; // Physics: Embers cooling off over time
+                }
+            }
+            drawStroke(freehandStrokes[i], freehandStrokes[i].length);
+        }
+        
+        // 3. Render physical dust particles
+        if (dustParticles.length > 0) {
+            resetShader(); // Drop back to standard p5 3D rendering for particles
+            noStroke();
+            for (let i = dustParticles.length - 1; i >= 0; i--) {
+                let p = dustParticles[i];
+                
+                // Physics
+                p.x += p.vx + (currentWind * 5.0);
+                p.y += p.vy;
+                p.vy += 0.2; // Gravity
+                p.rot += p.rotVel;
+                p.life -= 4; // Fade out
+                
+                if (p.life <= 0) {
+                    dustParticles.splice(i, 1);
+                    continue;
+                }
+                
+                push();
+                translate(p.x, p.y, p.z);
+                rotateZ(p.rot);
+                fill(40, 40, 40, p.life);
+                plane(p.size, p.size);
+                pop();
+            }
+        }
+
+    }
+}
+
+function windowResized() {
+    if (isRemote) return;
+    resizeCanvas(windowWidth, windowHeight);
+    if (appMode === 'preset') {
+        pathData = generateAnimalPath(currentAnimal, 4000, {width: width, height: height});
+        drawProgress = 0;
+        loop();
+    }
+}
+
+function setAnimal(id) {
+    appMode = 'preset';
+    currentAnimal = id;
+    pathData = generateAnimalPath(currentAnimal, 4000, {width: width, height: height});
+    drawProgress = 0;
+    
+    // Update UI
+    const btns = document.querySelectorAll('.preset-btn');
+    btns.forEach(btn => {
+        if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes("'" + id + "'")) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    document.getElementById('btn-clear').style.display = 'none';
+    
+    loop();
+}
+
+function setMode(mode) {
+    appMode = mode;
+    const btns = document.querySelectorAll('.preset-btn');
+    btns.forEach(btn => btn.classList.remove('active'));
+    
+    if (mode === 'freehand') {
+        document.getElementById('btn-freehand').classList.add('active');
+        document.getElementById('btn-clear').style.display = 'block';
+        freehandStrokes = [];
+        globalPointIndex = 0;
+        loop(); 
+    } else {
+        document.getElementById('btn-clear').style.display = 'none';
+    }
+}
+
+function clearFreehand() {
+    freehandStrokes = [];
+    globalPointIndex = 0;
+}
+
+let toastTimer = null;
+function showToast(message, icon = 'ℹ️', duration = 4500) {
+    const banner = document.getElementById('toast-banner');
+    const msgEl = document.getElementById('toast-message');
+    const iconEl = document.getElementById('toast-icon');
+    if (!banner || !msgEl) return;
+    
+    msgEl.textContent = message;
+    if (iconEl) iconEl.textContent = icon;
+    banner.classList.add('show');
+    
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+        banner.classList.remove('show');
+    }, duration);
+}
+
+function toggleRemoteQR() {
+    initAudio();
+    const qrContainer = document.getElementById('qr-container');
+    if (qrContainer.style.display === 'none') {
+        qrContainer.style.display = 'block';
+        
+        let url = window.location.origin + window.location.pathname + '?remote=true';
+        QRCode.toCanvas(document.getElementById('qrcode'), url, function (error) {
+            if (error) console.error(error);
+            console.log('QR Code generated for URL:', url);
+        });
+    } else {
+        qrContainer.style.display = 'none';
+    }
+}
+
+let cameraActive = false;
+let handsDetector;
+let camera;
+let webcamVideoElement;
+
+async function toggleCamera() {
+    let btn = document.getElementById('btn-camera');
+    if (!cameraActive) {
+        initAudio();
+        btn.classList.add('active');
+        btn.innerText = "Loading Camera...";
+        
+        if (appMode !== 'freehand') setMode('freehand');
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            btn.classList.remove('active');
+            btn.innerText = "Camera Draw";
+            showToast("Camera access is not supported in this browser environment.", "⚠️");
+            return;
+        }
+        
+        try {
+            webcamVideoElement = document.createElement('video');
+            webcamVideoElement.style.display = 'none';
+            webcamVideoElement.autoplay = true;
+            webcamVideoElement.playsInline = true;
+            document.body.appendChild(webcamVideoElement);
+            
+            handsDetector = new Hands({locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+            }});
+            handsDetector.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.6,
+                minTrackingConfidence: 0.6
+            });
+            handsDetector.onResults(onHandResults);
+            
+            camera = new Camera(webcamVideoElement, {
+                onFrame: async () => {
+                    if (cameraActive && handsDetector) {
+                        try {
+                            await handsDetector.send({image: webcamVideoElement});
+                        } catch (e) {
+                            console.warn("Hands detection frame error:", e);
+                        }
+                    }
+                },
+                width: 640,
+                height: 480
+            });
+            
+            await camera.start();
+            btn.innerText = "Camera Draw: ON (Pinch to draw)";
+            cameraActive = true;
+            showToast("Camera enabled! Pinch your thumb & index finger to draw in mid-air.", "✨");
+        } catch (err) {
+            console.error("Camera acquisition failed:", err);
+            btn.classList.remove('active');
+            btn.innerText = "Camera Draw";
+            cameraActive = false;
+            if (webcamVideoElement) {
+                webcamVideoElement.remove();
+                webcamVideoElement = null;
+            }
+            
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' || err.message?.includes('denied') || err.message?.includes('Permission')) {
+                showToast("Camera permission denied. Please allow camera access in your browser settings to draw in air.", "📷");
+            } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                showToast("No camera detected on your device.", "⚠️");
+            } else {
+                showToast("Unable to start camera hand tracking: " + (err.message || "Unknown error"), "⚠️");
+            }
+        }
+    } else {
+        btn.classList.remove('active');
+        btn.innerText = "Camera Draw";
+        if (camera) {
+            try {
+                camera.stop();
+            } catch (e) {
+                console.warn(e);
+            }
+        }
+        cameraActive = false;
+        if (webcamVideoElement) {
+            webcamVideoElement.remove();
+            webcamVideoElement = null;
+        }
+        if (isDrawing) {
+            isDrawing = false;
+            triggerCoCreation();
+        }
+        showToast("Camera tracking turned off.", "ℹ️", 2000);
+    }
+}
+
+function onHandResults(results) {
+    if (appMode !== 'freehand' || !cameraActive) return;
+    
+    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        let landmarks = results.multiHandLandmarks[0];
+        let indexTip = landmarks[8];
+        let thumbTip = landmarks[4];
+        
+        // Calculate pinch distance in 3D
+        let dx = indexTip.x - thumbTip.x;
+        let dy = indexTip.y - thumbTip.y;
+        let dz = indexTip.z - thumbTip.z;
+        let distPinch = Math.sqrt(dx*dx + dy*dy + dz*dz);
+        let isPinching = distPinch < 0.08;
+        
+        // Map coordinates (invert X for mirror)
+        let sx = (0.5 - indexTip.x) * width;
+        let sy = (indexTip.y - 0.5) * height;
+        
+        // Map Z to pressure (closer to camera = thicker)
+        // Z is relative to wrist. Typically between -0.15 (close) and +0.05 (far)
+        let handPressure = map(indexTip.z, -0.15, 0.05, 2.0, 0.2, true);
+        
+        if (isPinching && !isDrawing) {
+            isDrawing = true;
+            currentStroke = [];
+            freehandStrokes.push(currentStroke);
+            addFreehandPoint(sx, sy, handPressure);
+        } else if (isPinching && isDrawing) {
+            addFreehandPoint(sx, sy, handPressure);
+        } else if (!isPinching && isDrawing) {
+            isDrawing = false;
+            triggerCoCreation();
+        }
+    } else {
+        if (isDrawing) {
+            isDrawing = false;
+            triggerCoCreation();
+        }
+    }
+}
+</script>
+</body>
+</html>
