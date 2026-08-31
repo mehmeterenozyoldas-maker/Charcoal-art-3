@@ -190,6 +190,27 @@
             border-color: #ffffff;
             box-shadow: 0 2px 10px rgba(255, 255, 255, 0.25);
         }
+        #btn-bio.active {
+            background: #166534 !important;
+            color: #dcfce7 !important;
+            border-color: #22c55e !important;
+            box-shadow: 0 0 14px rgba(34, 197, 94, 0.45) !important;
+            font-weight: 600;
+        }
+        #tool-ember.active {
+            background: #9a3412 !important;
+            color: #ffedd5 !important;
+            border-color: #f97316 !important;
+            box-shadow: 0 0 14px rgba(249, 115, 22, 0.45) !important;
+            font-weight: 600;
+        }
+        #tool-water.active {
+            background: #075985 !important;
+            color: #e0f2fe !important;
+            border-color: #0284c7 !important;
+            box-shadow: 0 0 14px rgba(14, 165, 233, 0.45) !important;
+            font-weight: 600;
+        }
         
         .divider {
             width: 1px;
@@ -320,6 +341,7 @@
 <!-- Floating Canvas Guidance HUD -->
 <div id="canvas-hud">
     <div class="hud-item" id="hud-mode-tip">🖱️ Click & drag to sketch charcoal • Move mouse to shift light</div>
+    <div class="hud-item" id="hud-bio-pill" style="display:none; color:#86efac; border-color:rgba(134,239,172,0.3); background:rgba(20,40,25,0.75);"><span>🌱</span> Living Canvas: <b id="bio-hud-count">0</b> roots creeping</div>
     <div class="hud-item" id="hud-phone-tip" style="display:none;">📱 Spatial Phone Stylus: Aim in air & hold trigger</div>
 </div>
 
@@ -355,14 +377,46 @@
         
         <!-- Freehand Studio Tools (Active in Freehand mode) -->
         <div class="segmented-group" id="freehand-tools-group" style="display:none;">
-            <button class="preset-btn" onclick="triggerManualSmudge()" title="Blend charcoal particles">
+            <div class="segmented-group" style="background: rgba(0,0,0,0.25); padding: 2px;">
+                <button class="preset-btn active" id="tool-charcoal" onclick="setDrawTool('charcoal')" title="Charcoal Stick (C)">
+                    <span>✏️</span> Draw
+                </button>
+                <button class="preset-btn" id="tool-eraser" onclick="setDrawTool('eraser')" title="Kneaded Eraser: Erases charcoal and prunes living branches (X)">
+                    <span>🧽</span> Erase
+                </button>
+                <button class="preset-btn" id="tool-ember" onclick="setDrawTool('ember')" title="Ember: Scorch & burn away charcoal strokes directly (M)">
+                    <span>🔥</span> Ember
+                </button>
+                <button class="preset-btn" id="tool-water" onclick="setDrawTool('water')" title="Water: Bleed & dissolve strokes into soft wash (W)">
+                    <span>💧</span> Water
+                </button>
+            </div>
+            <div class="divider"></div>
+            <button class="preset-btn" id="btn-tint-cycle" onclick="cycleTint()" title="Change Pigment (T)">
+                <span id="tint-icon">⚫</span> Black Carbon
+            </button>
+            <div class="divider"></div>
+            <button class="preset-btn" onclick="triggerManualSmudge()" title="Blend charcoal particles (S)">
                 <span>💨</span> Smudge
             </button>
-            <button class="preset-btn" onclick="triggerBlowDust()" title="Blow charcoal dust">
+            <button class="preset-btn" onclick="triggerBlowDust()" title="Blow charcoal dust (Space)">
                 <span>🌬️</span> Blow Dust
             </button>
-            <button class="preset-btn" onclick="cyclePaperGrain()" id="btn-paper-cycle" title="Change paper tooth">
+            <button class="preset-btn" onclick="applyFixative()" title="Spray Fixative to lock layers (F)">
+                <span>🌫️</span> Fixative
+            </button>
+            <button class="preset-btn" onclick="cyclePaperGrain()" id="btn-paper-cycle" title="Change paper tooth (P)">
                 <span>📄</span> Paper: Cold-Pressed
+            </button>
+            <button class="preset-btn" onclick="cycleLighting()" id="btn-light-cycle" title="Change lighting (L)">
+                <span>🔦</span> Light: Dynamic Hand
+            </button>
+            <button class="preset-btn" onclick="toggleBioActivity()" id="btn-bio" title="Living Canvas: Awaken carbon strokes into creeping organic roots (B)">
+                <span>🌱</span> Living Canvas
+            </button>
+            <div class="divider"></div>
+            <button class="preset-btn" onclick="startTimelapsePlayback()" title="Cinematic Time-lapse Export">
+                <span>🎥</span> Playback
             </button>
             <button class="preset-btn" onclick="undoLastStroke()" title="Undo last stroke (Ctrl+Z)">
                 <span>↩️</span> Undo
@@ -384,34 +438,42 @@
         <button onclick="toggleShortcutsModal()" style="background:none; border:none; color:#888; font-size:20px; cursor:pointer; padding:4px 8px; border-radius:8px; line-height:1;">✕</button>
     </div>
     
-    <div style="text-align:left; font-size:13px; color:#ccc; display:flex; flex-direction:column; gap:10px; line-height:1.5;">
-        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:6px;">
+    <div style="text-align:left; font-size:13px; color:#ccc; display:flex; flex-direction:column; gap:9px; line-height:1.5;">
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:5px;">
             <span><kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">Click + Drag</kbd></span>
-            <span style="color:#aaa;">Draw charcoal stroke</span>
+            <span style="color:#aaa;">Draw, erase, ember burn, or drop water</span>
         </div>
-        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:6px;">
-            <span><kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">Right Click / S</kbd></span>
-            <span style="color:#aaa;">Smudge nearby carbon</span>
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:5px;">
+            <span><kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">C</kbd> / <kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">X</kbd></span>
+            <span style="color:#aaa;">Charcoal Stick / Kneaded Eraser (prunes roots)</span>
         </div>
-        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:6px;">
-            <span><kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">B / Space</kbd></span>
-            <span style="color:#aaa;">Blow loose carbon dust</span>
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:5px;">
+            <span><kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">M</kbd> / <kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">W</kbd></span>
+            <span style="color:#aaa;">🔥 Smoldering Match / 💧 Water Dropper Wash</span>
         </div>
-        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:6px;">
-            <span><kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">Ctrl + Z</kbd></span>
-            <span style="color:#aaa;">Undo last stroke</span>
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:5px;">
+            <span><kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">B</kbd></span>
+            <span style="color:#aaa;">🌱 Toggle Living Canvas (Organic Mycelium)</span>
         </div>
-        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:6px;">
-            <span><kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">C</kbd></span>
-            <span style="color:#aaa;">Clear canvas</span>
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:5px;">
+            <span><kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">T</kbd> / <kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">P</kbd></span>
+            <span style="color:#aaa;">Cycle Pigment / Paper Tooth</span>
         </div>
-        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:6px;">
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:5px;">
+            <span><kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">S</kbd> / <kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">Space</kbd> / <kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">F</kbd></span>
+            <span style="color:#aaa;">Smudge / Blow Dust / Fixative Spray</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:5px;">
+            <span><kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">Ctrl+Z</kbd> / <kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">Del</kbd></span>
+            <span style="color:#aaa;">Undo stroke / Clear canvas</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:5px;">
             <span><kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">E</kbd></span>
             <span style="color:#aaa;">Export artwork as PNG</span>
         </div>
         <div style="display:flex; justify-content:space-between; padding-top:2px;">
             <span><kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444;">📱 Air Wand</kbd></span>
-            <span style="color:#aaa;">Wave phone in 3D air to sketch</span>
+            <span style="color:#aaa;">Wave phone in 3D air to sketch & burn</span>
         </div>
     </div>
     
@@ -615,6 +677,8 @@ precision highp float;
 varying vec2 vTexCoord;
 uniform vec2 u_resolution;
 uniform vec2 u_lightPos;
+uniform vec3 u_paper_color;
+uniform vec3 u_light_color;
 
 ${sharedGLSL}
 
@@ -646,9 +710,10 @@ void main() {
     // Realism: Faint paper sheen
     float spec = pow(max(dot(normal, normalize(lightDir + vec3(0.0, 0.0, 1.0))), 0.0), 12.0) * 0.15;
     
-    vec3 paperBase = vec3(0.93, 0.91, 0.87); // Warm, natural fibrous paper
-    vec3 col = paperBase * (diff * 0.4 + 0.6) * (attenuation * 0.2 + 0.8) - (n2 * 0.05);
-    col += spec * attenuation; 
+    // Apply light color to the diffuse interaction
+    vec3 illuminatedPaper = u_paper_color * (diff * 0.4 + 0.6) * u_light_color;
+    vec3 col = illuminatedPaper * (attenuation * 0.2 + 0.8) - (n2 * 0.05);
+    col += spec * attenuation * u_light_color; 
     
     gl_FragColor = vec4(col, 1.0);
 }
@@ -661,6 +726,8 @@ varying vec4 vColor;
 uniform vec2 u_resolution;
 uniform float u_wind;
 uniform vec2 u_lightPos;
+uniform vec3 u_tint_light;
+uniform vec3 u_tint_dark;
 
 ${sharedGLSL}
 
@@ -702,11 +769,8 @@ void main() {
     if (strokeAlpha < 0.01) discard;
     
     // 8. Authentic Charcoal Palette:
-    // Soft powdery vine charcoal grey-black to deep compressed carbon black
-    vec3 vineCharcoal = vec3(0.20, 0.19, 0.21);      // Soft, powdery vine charcoal
-    vec3 deepCompressed = vec3(0.06, 0.05, 0.06);    // Deep velvety compressed carbon
-    
-    vec3 charcoalColor = mix(vineCharcoal, deepCompressed, clamp(density * strokeMask * 0.9, 0.0, 1.0));
+    // Controlled by JS uniforms (Black/Vine, Sanguine, Sepia)
+    vec3 charcoalColor = mix(u_tint_light, u_tint_dark, clamp(density * strokeMask * 0.9, 0.0, 1.0));
     
     // Subtle realistic graphite/carbon surface sheen under incident light
     vec2 lightNorm = u_lightPos;
@@ -717,7 +781,7 @@ void main() {
     
     vec3 finalRGB = charcoalColor + spec;
     
-    gl_FragColor = vec4(finalRGB, strokeAlpha * 0.95);
+    gl_FragColor = vec4(finalRGB, strokeAlpha * 0.95 * vColor.a);
 }
 `;
 
@@ -735,6 +799,17 @@ let rotX = 0;
 let rotY = 0;
 let socket;
 let isRemote = false;
+
+let currentTool = 'charcoal'; // 'charcoal', 'eraser', 'ember', 'water'
+let currentTint = 'black';
+const charcoalTints = {
+    black: { name: 'Black Carbon', icon: '⚫', light: [0.20, 0.19, 0.21], dark: [0.06, 0.05, 0.06] },
+    sanguine: { name: 'Sanguine (Red)', icon: '🔴', light: [0.75, 0.35, 0.25], dark: [0.35, 0.11, 0.08] },
+    sepia: { name: 'Sepia (Brown)', icon: '🟤', light: [0.55, 0.45, 0.35], dark: [0.25, 0.15, 0.08] },
+    chalk: { name: 'White Chalk', icon: '⚪', light: [0.95, 0.95, 0.92], dark: [0.70, 0.70, 0.65] },
+    bio_lichen: { name: 'Lichen Moss', icon: '🌿', light: [0.65, 0.88, 0.42], dark: [0.18, 0.38, 0.12] },
+    ember_char: { name: 'Smoldering Ash', icon: '🔥', light: [0.95, 0.48, 0.18], dark: [0.32, 0.10, 0.04] }
+};
 
 // Check if we are running as remote
 const urlParams = new URLSearchParams(window.location.search);
@@ -1104,15 +1179,247 @@ let audioStarted = false;
 let activePhantom = null;
 let coCreationEnabled = false;
 
+let isPlayingBack = false;
+let playbackStrokesCache = [];
+let currentPlaybackStrokeIdx = 0;
+let currentPlaybackPointIdx = 0;
+let playbackSpeed = 2; // points per frame
+
+// --- LIVING CANVAS ENGINE ---
+let isBioActive = false;
+let livingBranches = [];
+
+function toggleBioActivity() {
+    isBioActive = !isBioActive;
+    let btn = document.getElementById('btn-bio');
+    let hudPill = document.getElementById('hud-bio-pill');
+    
+    if (isBioActive) {
+        if (btn) btn.classList.add('active');
+        if (hudPill) hudPill.style.display = 'flex';
+        
+        if (freehandStrokes.length === 0) {
+            showToast("🌱 Living Canvas Active: Sketch on paper or click to seed crawling roots!", "🌱", 3800);
+        } else {
+            showToast("🌱 Living Canvas Awakened: Roots creeping from carbon strokes", "🌱", 2800);
+        }
+        playBioRustleSound();
+    } else {
+        if (btn) btn.classList.remove('active');
+        if (hudPill) hudPill.style.display = 'none';
+        showToast("🌱 Living Canvas: Dormant", "🌱", 2000);
+    }
+}
+
+function seedLivingRoot(x, y) {
+    if (!isBioActive) return;
+    
+    // Spawn 2-3 new exploratory shoots at (x,y)
+    let branchCount = Math.floor(random(2, 4));
+    for (let k = 0; k < branchCount; k++) {
+        let newStroke = [];
+        newStroke.tint = 'bio_lichen';
+        newStroke.isBio = true;
+        freehandStrokes.push(newStroke);
+        
+        let startAngle = random(TWO_PI);
+        livingBranches.push({
+            strokeRef: newStroke,
+            x: x + random(-4, 4),
+            y: y + random(-4, 4),
+            angle: startAngle,
+            speed: random(1.6, 3.8),
+            life: random(200, 650),
+            noiseOffset: random(1000),
+            pulseSeed: random(100)
+        });
+    }
+    
+    // Spawn a burst of glowing bio spores
+    for (let s = 0; s < 6; s++) {
+        dustParticles.push({
+            x: x + random(-6, 6),
+            y: y + random(-6, 6),
+            z: random(4, 14),
+            vx: random(-1.2, 1.2),
+            vy: random(-1.2, 1.2),
+            life: 260,
+            maxLife: 260,
+            size: random(2.5, 4.5),
+            isSpore: true
+        });
+    }
+    playBioRustleSound();
+}
+
+function processBiology() {
+    if (!isBioActive) return;
+    
+    let countEl = document.getElementById('bio-hud-count');
+    if (countEl) countEl.textContent = livingBranches.length;
+
+    // 1. Spontaneous Mycelial Sprouting from user strokes
+    if (freehandStrokes.length > 0 && random() < 0.28 && livingBranches.length < 40) {
+        let randStroke = random(freehandStrokes);
+        if (randStroke && randStroke.length > 3) {
+            let randPt = random(randStroke);
+            let newStroke = [];
+            newStroke.tint = 'bio_lichen'; // Visually distinct lichen green
+            newStroke.isBio = true; 
+            freehandStrokes.push(newStroke);
+            
+            let angle = random(TWO_PI);
+            livingBranches.push({
+                strokeRef: newStroke,
+                x: randPt.x,
+                y: randPt.y,
+                angle: angle,
+                speed: random(1.6, 3.6),
+                life: random(180, 580),
+                noiseOffset: random(1000),
+                pulseSeed: random(100)
+            });
+            
+            // Spore burst at sprout origin
+            dustParticles.push({
+                x: randPt.x,
+                y: randPt.y,
+                z: random(3, 12),
+                vx: random(-0.8, 0.8),
+                vy: random(-0.8, 0.8),
+                life: 200,
+                maxLife: 200,
+                size: random(2.2, 3.8),
+                isSpore: true
+            });
+        }
+    }
+
+    // 2. Phototropism (gently steer branches toward the studio light source)
+    let lstyle = lightingStyles[currentLightingIdx];
+    let lightTargetX = (mouseX / width - 0.5) * width;
+    let lightTargetY = (mouseY / height - 0.5) * height;
+    if (lstyle.mode === 'fixed') {
+        lightTargetX = (lstyle.pos[0] - 0.5) * width;
+        lightTargetY = (lstyle.pos[1] - 0.5) * height;
+    }
+
+    // 3. Grow active mycelium hyphae
+    for (let i = livingBranches.length - 1; i >= 0; i--) {
+        let b = livingBranches[i];
+        
+        // Phototaxis + Curl Noise steering
+        let angleToLight = Math.atan2(lightTargetY - b.y, lightTargetX - b.x);
+        let photoSteer = (angleToLight - b.angle);
+        while (photoSteer > Math.PI) photoSteer -= TWO_PI;
+        while (photoSteer < -Math.PI) photoSteer += TWO_PI;
+        
+        b.angle += (noise(b.x * 0.01, b.y * 0.01, b.noiseOffset) - 0.5) * 0.38 + (photoSteer * 0.025);
+        b.noiseOffset += 0.02;
+        
+        b.x += Math.cos(b.angle) * b.speed;
+        b.y += Math.sin(b.angle) * b.speed;
+        
+        // Add point to stroke
+        b.strokeRef.push({
+            x: b.x,
+            y: b.y,
+            idx: globalPointIndex++,
+            pressure: random(0.85, 1.75) // Thick, visible hyphae structure
+        });
+        
+        // Bifurcation (branching)
+        if (b.life > 30 && random() < 0.035 && livingBranches.length < 50) {
+            let splitStroke = [];
+            splitStroke.tint = 'bio_lichen';
+            splitStroke.isBio = true;
+            freehandStrokes.push(splitStroke);
+            
+            livingBranches.push({
+                strokeRef: splitStroke,
+                x: b.x,
+                y: b.y,
+                angle: b.angle + random(-0.9, 0.9),
+                speed: b.speed * random(0.85, 1.15),
+                life: b.life * 0.75,
+                noiseOffset: random(1000),
+                pulseSeed: random(100)
+            });
+            
+            dustParticles.push({
+                x: b.x, y: b.y, z: 6,
+                vx: random(-1, 1), vy: random(-1, 1),
+                life: 180, maxLife: 180, size: 3.0, isSpore: true
+            });
+        }
+        
+        b.life--;
+        if (b.life <= 0) {
+            livingBranches.splice(i, 1);
+        }
+    }
+}
+
+// --- DESTRUCTIVE EMBERS & WATER MEDIUMS (DIRECT DRAW IMPACT) ---
+function applyEmber(x, y) {
+    let radius = 28;
+    freehandStrokes.forEach(stroke => {
+        if (stroke.fixed) return;
+        stroke.forEach(p => {
+            let d = dist(p.x, p.y, x, y);
+            if (d < radius) {
+                let burnFactor = (1.0 - d / radius);
+                // Burn and consume charcoal pigment directly
+                p.pressure = Math.max(0, p.pressure - burnFactor * 0.45);
+                // Brittle char displacement
+                p.x += (Math.random() - 0.5) * 1.2 * burnFactor;
+                p.y += (Math.random() - 0.5) * 1.2 * burnFactor;
+            }
+        });
+    });
+    
+    // Prune living branches caught in ember
+    if (isBioActive) {
+        for (let i = livingBranches.length - 1; i >= 0; i--) {
+            let b = livingBranches[i];
+            if (dist(x, y, b.x, b.y) < radius) {
+                livingBranches.splice(i, 1);
+            }
+        }
+    }
+}
+
+function applyWater(x, y) {
+    let radius = 34;
+    freehandStrokes.forEach(stroke => {
+        if (stroke.fixed) return;
+        stroke.forEach(p => {
+            let d = dist(p.x, p.y, x, y);
+            if (d < radius) {
+                let washFactor = (1.0 - d / radius);
+                // Bleed & diffuse charcoal particles directly across paper grain & tilt
+                let angle = Math.atan2(p.y - y, p.x - x) + (Math.random() - 0.5) * 0.7;
+                let spread = washFactor * random(1.2, 3.8);
+                p.x += Math.cos(angle) * spread + (remoteTilt.gamma * 0.04);
+                p.y += Math.sin(angle) * spread + (remoteTilt.beta * 0.04) + (0.2 * washFactor);
+                
+                // Soften high charcoal contrast into a diluted wash
+                p.pressure = Math.max(0.06, p.pressure * (1.0 - washFactor * 0.22));
+            }
+        });
+    });
+}
+
 function toggleCoCreate() {
     coCreationEnabled = !coCreationEnabled;
     let btn = document.getElementById('btn-cocreate');
     if (coCreationEnabled) {
         btn.classList.add('active');
-        btn.innerText = "Jazz Co-Create: ON";
+        btn.innerText = "Jazz Duet: ON";
+        showToast("Jazz Duet Active: Canvas improvises alongside your hand", "✨", 2500);
     } else {
         btn.classList.remove('active');
-        btn.innerText = "Jazz Co-Create: OFF";
+        btn.innerText = "Jazz Duet: OFF";
     }
 }
 
@@ -1163,7 +1470,6 @@ function initAudio() {
         let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
         for (let i = 0; i < bufferSize; i++) {
             let white = Math.random() * 2 - 1;
-            // Pink noise filtering
             b0 = 0.99886 * b0 + white * 0.0555179;
             b1 = 0.99332 * b1 + white * 0.0750759;
             b2 = 0.96900 * b2 + white * 0.1538520;
@@ -1173,7 +1479,6 @@ function initAudio() {
             let pink = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
             b6 = white * 0.115926;
             
-            // Micro-asperity grain pops (natural charcoal fracture on cold-pressed tooth)
             let grainPop = (Math.random() < 0.003) ? (Math.random() - 0.5) * 0.8 : 0;
             data[i] = (pink * 0.14) + grainPop;
         }
@@ -1189,7 +1494,7 @@ function initAudio() {
         
         raspFilterNode = audioCtx.createBiquadFilter();
         raspFilterNode.type = 'peaking';
-        raspFilterNode.frequency.value = 3200; // Fixed physical tooth friction resonance
+        raspFilterNode.frequency.value = 3200;
         raspFilterNode.Q.value = 1.6;
         raspFilterNode.gain.value = 6;
         
@@ -1240,9 +1545,8 @@ function playCharcoalFrictionSound(velocity, pressure = 1.0) {
     let normVel = Math.min(Math.max(velocity / 35.0, 0.05), 1.5);
     let normPressure = Math.min(Math.max(pressure, 0.4), 2.2);
     
-    // Natural physical loudness modulation without synthetic pitch sweeping
     let targetGain = Math.min(0.04 + (normVel * 0.24 * normPressure), 0.42);
-    let targetRaspFreq = 3000 + (normVel * 400); // 3000Hz - 3600Hz subtle brightness
+    let targetRaspFreq = 3000 + (normVel * 400);
     
     masterGainNode.gain.cancelScheduledValues(now);
     masterGainNode.gain.setTargetAtTime(targetGain, now, 0.015);
@@ -1258,6 +1562,72 @@ function playCharcoalSmudgeSound(intensity) {
     masterGainNode.gain.cancelScheduledValues(now);
     masterGainNode.gain.setTargetAtTime(targetGain, now, 0.02);
     raspFilterNode.frequency.setTargetAtTime(2200, now, 0.04);
+}
+
+function playWaterDropSound() {
+    if (isAudioMuted || !audioCtx) return;
+    try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        let now = audioCtx.currentTime;
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(520, now);
+        osc.frequency.exponentialRampToValueAtTime(180, now + 0.12);
+        
+        gain.gain.setValueAtTime(0.24, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+        
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.15);
+    } catch(e) {}
+}
+
+function playEmberIgniteSound() {
+    if (isAudioMuted || !audioCtx) return;
+    try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        let now = audioCtx.currentTime;
+        
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(800 + Math.random() * 400, now);
+        osc.frequency.exponentialRampToValueAtTime(200, now + 0.08);
+        
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.10);
+    } catch(e) {}
+}
+
+function playBioRustleSound() {
+    if (isAudioMuted || !audioCtx) return;
+    try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        let now = audioCtx.currentTime;
+        
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.exponentialRampToValueAtTime(640, now + 0.18);
+        
+        gain.gain.setValueAtTime(0.10, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.23);
+    } catch(e) {}
 }
 
 let airWandCursor = { x: 0, y: 0, active: false, isDrawing: false, pressure: 1.0, lastSeen: 0, beta: 0, gamma: 0 };
@@ -1286,6 +1656,7 @@ function initSocketDisplay() {
             airWandCursor.isDrawing = true;
             isDrawing = true;
             currentStroke = [];
+            currentStroke.tint = currentTint;
             freehandStrokes.push(currentStroke);
             addFreehandPoint(airWandCursor.x, airWandCursor.y, airWandCursor.pressure);
         } else if (data.type === 'move' && data.isDrawing) {
@@ -1313,6 +1684,7 @@ function initSocketDisplay() {
         
         if (data.type === 'start') {
             currentStroke = [];
+            currentStroke.tint = currentTint;
             freehandStrokes.push(currentStroke);
             addFreehandPoint(screenX, screenY);
             isDrawing = true;
@@ -1338,43 +1710,12 @@ function initSocketDisplay() {
     });
 
     socket.on('smudge_event', (data) => {
-        let sX = data.x * width;
-        let sY = data.y * height;
-        let radius = 120;
-        
+        let sX = data.x * width - width/2;
+        let sY = data.y * height - height/2;
         let dxWorld = data.dx * width;
         let dyWorld = data.dy * height;
         
-        // Spawn physical dust particles at the smudge location based on velocity
-        let speed = Math.sqrt(dxWorld*dxWorld + dyWorld*dyWorld);
-        if (speed > 4) {
-            spawnDust(sX, sY, dxWorld * 0.12, dyWorld * 0.12, min(speed / 8.0, 3.5));
-            playCharcoalSmudgeSound(min(speed / 8.0, 1.6));
-        }
-        
-        // Temporarily shift all nearby points to simulate a smudge
-        freehandStrokes.forEach(stroke => {
-            stroke.forEach(p => {
-                let d = dist(sX, sY, p.x, p.y);
-                if(d < radius) {
-                    let force = pow(1.0 - d/radius, 2) * 35.0;
-                    p.x += data.dx * width * force;
-                    p.y += data.dy * height * force;
-                }
-            });
-            // Recompute tangents for smudged strokes
-            for(let i = 0; i < stroke.length; i++) {
-                let prev = i > 0 ? stroke[i-1] : stroke[i];
-                let next = i < stroke.length-1 ? stroke[i+1] : stroke[i];
-                let dx = next.x - prev.x;
-                let dy = next.y - prev.y;
-                let distLen = Math.sqrt(dx*dx + dy*dy);
-                if(distLen > 0.001) {
-                    stroke[i].tx = dx / distLen;
-                    stroke[i].ty = dy / distLen;
-                }
-            }
-        });
+        applySmudge(sX, sY, dxWorld, dyWorld);
     });
     
     socket.on('clear_event', () => {
@@ -1384,7 +1725,25 @@ function initSocketDisplay() {
     });
 }
 
+// Global Pointer Physics (Stylus support)
+let pointerInput = { pressure: 1.0, tiltX: 0, tiltY: 0 };
+
+function handlePointerInput(e) {
+    if (e.pointerType === 'pen') {
+        pointerInput.pressure = e.pressure;
+        pointerInput.tiltX = e.tiltX;
+        pointerInput.tiltY = e.tiltY;
+    } else {
+        pointerInput.pressure = 1.0;
+        pointerInput.tiltX = 0;
+        pointerInput.tiltY = 0;
+    }
+}
+
 function setup() {
+    window.addEventListener('pointerdown', handlePointerInput);
+    window.addEventListener('pointermove', handlePointerInput);
+    
     if (isRemote) {
         noCanvas();
         return; // Don't setup p5 canvas on remote
@@ -1409,20 +1768,131 @@ function setup() {
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 }
 
+let lastToolActionPos = { x: 0, y: 0 };
+
 function mousePressed() {
     if (!isAudioMuted) initAudio();
+    if (isPlayingBack) isPlayingBack = false;
+    
     if (appMode === 'freehand' && mouseY < height - 70) {
         isDrawing = true;
-        currentStroke = [];
-        freehandStrokes.push(currentStroke);
-        addFreehandPoint(mouseX - width/2, mouseY - height/2);
+        let worldX = mouseX - width/2;
+        let worldY = mouseY - height/2;
+        lastToolActionPos = { x: worldX, y: worldY };
+        
+        if (currentTool === 'eraser') {
+            applyEraser(worldX, worldY);
+        } else if (currentTool === 'ember') {
+            applyEmber(worldX, worldY);
+        } else if (currentTool === 'water') {
+            applyWater(worldX, worldY);
+        } else {
+            currentStroke = [];
+            currentStroke.tint = currentTint;
+            freehandStrokes.push(currentStroke);
+            addFreehandPoint(worldX, worldY);
+            
+            // If living canvas is active, clicking seeds a shoot
+            if (isBioActive && random() < 0.6) {
+                seedLivingRoot(worldX, worldY);
+            }
+        }
     }
 }
 
 function mouseDragged() {
     if (isDrawing && appMode === 'freehand') {
-        addFreehandPoint(mouseX - width/2, mouseY - height/2);
+        let worldX = mouseX - width/2;
+        let worldY = mouseY - height/2;
+        
+        if (currentTool === 'eraser') {
+            applyEraser(worldX, worldY);
+        } else if (currentTool === 'ember') {
+            applyEmber(worldX, worldY);
+        } else if (currentTool === 'water') {
+            applyWater(worldX, worldY);
+        } else {
+            addFreehandPoint(worldX, worldY);
+        }
     }
+}
+
+function applyEraser(x, y) {
+    let radius = 28; // Eraser size
+    let erasedSomething = false;
+    
+    // 1. Lift charcoal pigment
+    freehandStrokes.forEach(stroke => {
+        if (stroke.fixed) return;
+        stroke.forEach(p => {
+            let d = dist(x, y, p.x, p.y);
+            if(d < radius) {
+                let eraseAmount = map(d, 0, radius, 0.6, 0.0, true);
+                if (p.pressure > 0.05) {
+                    p.pressure -= eraseAmount;
+                    if (p.pressure < 0) p.pressure = 0;
+                    erasedSomething = true;
+                }
+            }
+        });
+    });
+    
+    // 2. Prune Living Canvas Branches
+    if (isBioActive) {
+        for (let i = livingBranches.length - 1; i >= 0; i--) {
+            let b = livingBranches[i];
+            if (dist(x, y, b.x, b.y) < radius + 10) {
+                livingBranches.splice(i, 1);
+                erasedSomething = true;
+                
+                // Pruning puff of spores
+                dustParticles.push({
+                    x: b.x, y: b.y, z: 8,
+                    vx: random(-1.5, 1.5), vy: random(-1.5, 1.5),
+                    life: 140, maxLife: 140, size: 3.5, isSpore: true
+                });
+            }
+        }
+    }
+    
+    if (erasedSomething && audioStarted && frameCount % 5 === 0) {
+        // play gentle rubbing sound
+        playCharcoalFrictionSound(15.0, 0.25); 
+    }
+}
+
+function applySmudge(sX, sY, dxWorld, dyWorld) {
+    let radius = 120;
+    let speed = Math.sqrt(dxWorld*dxWorld + dyWorld*dyWorld);
+    
+    if (speed > 4) {
+        spawnDust(sX, sY, dxWorld * 0.12, dyWorld * 0.12, min(speed / 8.0, 3.5));
+        playCharcoalSmudgeSound(min(speed / 8.0, 1.6));
+    }
+    
+    freehandStrokes.forEach(stroke => {
+        if (stroke.fixed) return;
+        stroke.forEach(p => {
+            let d = dist(sX, sY, p.x, p.y);
+            if(d < radius) {
+                let force = pow(1.0 - d/radius, 2);
+                p.x += dxWorld * force * 0.2; 
+                p.y += dyWorld * force * 0.2;
+            }
+        });
+        
+        for(let i = 0; i < stroke.length; i++) {
+            let prev = i > 0 ? stroke[i-1] : stroke[i];
+            let next = i < stroke.length-1 ? stroke[i+1] : stroke[i];
+            let dx = next.x - prev.x;
+            let dy = next.y - prev.y;
+            let distLen = Math.sqrt(dx*dx + dy*dy);
+            if(distLen > 0.001) {
+                stroke[i].tx = dx / distLen;
+                stroke[i].ty = dy / distLen;
+            }
+        }
+    });
 }
 
 function mouseReleased() {
@@ -1461,8 +1931,15 @@ function addFreehandPoint(x, y, pressureOverride = null) {
         if (distVal < 3) return;
     }
     
-    let pVal = (pressureOverride !== null && pressureOverride !== undefined) ? pressureOverride : 1.0;
-    currentStroke.push({x: x, y: y, idx: globalPointIndex++, pressure: pVal});
+    let pVal = (pressureOverride !== null && pressureOverride !== undefined) ? pressureOverride : pointerInput.pressure;
+    currentStroke.push({
+        x: x, 
+        y: y, 
+        idx: globalPointIndex++, 
+        pressure: pVal,
+        tiltX: pointerInput.tiltX,
+        tiltY: pointerInput.tiltY
+    });
     
     if (distVal > 18 || pVal > 1.2) {
         spawnDust(x, y, vx, vy, pVal);
@@ -1616,8 +2093,10 @@ function drawStroke(points, limit) {
             ? p.pressure 
             : (0.7 + noise(noiseIdx * 0.03 + 200) * 0.6);
         
-        // Map gyro tilt (gamma) to charcoal angle/width multiplier
-        let tiltFactor = map(abs(remoteTilt.gamma), 0, 90, 1.0, 3.0, true);
+        // Combine gyro tilt and native stylus tilt
+        let nativeTilt = (p.tiltX !== undefined) ? abs(p.tiltX) : 0;
+        let effectiveTilt = max(abs(remoteTilt.gamma), nativeTilt);
+        let tiltFactor = map(effectiveTilt, 0, 90, 1.0, 3.0, true);
         
         let baseW = 9.5 * (0.45 + pressure * 0.9);
         let w = baseW * tiltFactor; 
@@ -1627,7 +2106,11 @@ function drawStroke(points, limit) {
         
         // Map normalized pigment density to vertex color for charcoalFrag shader
         let density = map(pressure, 0.3, 1.8, 0.55, 1.25, true);
-        fill(density * 255, density * 255, density * 255, 255);
+        
+        // Alpha mapping for erasing and fading ends
+        let pointAlpha = map(pressure, 0.0, 0.15, 0.0, 1.0, true);
+        
+        fill(density * 255, density * 255, density * 255, pointAlpha * 255);
         
         vertex(p.x + nx * w, p.y + ny * w, zDepth, u, 0.0);
         vertex(p.x - nx * w, p.y - ny * w, zDepth, u, 1.0);
@@ -1653,13 +2136,25 @@ function draw() {
     rotateY(rotY);
 
     // Interactive Shader Shadows
-    let lx = mouseX / width;
-    let ly = 1.0 - (mouseY / height);
+    let lstyle = lightingStyles[currentLightingIdx];
+    let lx, ly;
+    let lcolor;
+    if (lstyle.mode === 'dynamic') {
+        lx = mouseX / width;
+        ly = 1.0 - (mouseY / height);
+        lcolor = lstyle.color || [1.0, 1.0, 1.0];
+    } else {
+        lx = lstyle.pos[0];
+        ly = lstyle.pos[1];
+        lcolor = lstyle.color;
+    }
 
     // 1. Render Base Paper Layer
     shader(paperSh);
     paperSh.setUniform('u_resolution', [width, height]);
     paperSh.setUniform('u_lightPos', [lx, ly]);
+    paperSh.setUniform('u_light_color', lcolor);
+    paperSh.setUniform('u_paper_color', paperStyles[currentPaperIdx].color);
     
     // We need a larger paper plane so we don't see the edges when rotating
     rect(-width, -height, width * 2, height * 2); 
@@ -1677,6 +2172,10 @@ function draw() {
     }
     
     if (appMode === 'preset') {
+        let t = charcoalTints['black'];
+        charcoalSh.setUniform('u_tint_light', t.light);
+        charcoalSh.setUniform('u_tint_dark', t.dark);
+        
         let pointsPerFrame = 35;
         if (drawProgress < pathData.length) {
             drawProgress = min(pathData.length, drawProgress + pointsPerFrame);
@@ -1687,6 +2186,29 @@ function draw() {
         
         drawStroke(pathData, drawProgress);
     } else if (appMode === 'freehand') {
+        
+        if (isPlayingBack) {
+            processPlayback();
+        }
+        
+        if (isBioActive) {
+            processBiology();
+        }
+
+        // Render Charcoal & Living Canvas Strokes with Shader
+        shader(charcoalSh);
+        charcoalSh.setUniform('u_resolution', [width, height]);
+        charcoalSh.setUniform('u_wind', currentWind);
+        charcoalSh.setUniform('u_lightPos', [lx, ly]);
+        
+        // Draw all freehand strokes with their corresponding tint
+        freehandStrokes.forEach(stroke => {
+            let sTintKey = stroke.tint || 'black';
+            let tColors = charcoalTints[sTintKey] || charcoalTints['black'];
+            charcoalSh.setUniform('u_tint_light', tColors.light);
+            charcoalSh.setUniform('u_tint_dark', tColors.dark);
+            drawStroke(stroke, stroke.length);
+        });
         
         if (activePhantom && !isDrawing) {
             // Jazz duet! Generative graceful charcoal stroke
@@ -1712,12 +2234,10 @@ function draw() {
             let stroke = activePhantom.stroke;
             stroke.push(p);
             
-            // Soft tactile friction sound for generative stroke
             if (audioStarted) {
                 playCharcoalFrictionSound(activePhantom.speed * 1.5, 0.65);
             }
             
-            // Recalculate tangents for the end of the stroke
             for(let i = stroke.length - 3; i < stroke.length; i++) {
                 if(i < 0) continue;
                 let prev = i > 0 ? stroke[i-1] : stroke[i];
@@ -1739,47 +2259,70 @@ function draw() {
             }
         }
 
-        // Draw all freehand charcoal strokes
-        for (let i = 0; i < freehandStrokes.length; i++) {
-            drawStroke(freehandStrokes[i], freehandStrokes[i].length);
+        // 3. Render Living Branch Glowing Tips
+        if (isBioActive && livingBranches.length > 0) {
+            resetShader();
+            noStroke();
+            for (let b of livingBranches) {
+                let pulse = 160 + Math.sin(frameCount * 0.15 + (b.pulseSeed || 0)) * 60;
+                push();
+                translate(b.x, b.y, 6);
+                fill(170, 240, 90, pulse * 0.4);
+                ellipse(0, 0, 10, 10);
+                fill(210, 255, 120, pulse);
+                ellipse(0, 0, 4.5, 4.5);
+                pop();
+            }
         }
-        
-        // 3. Render physical fine charcoal dust grains
+
+        // 4. Render Charcoal Dust & Spore Grains
         if (dustParticles.length > 0) {
-            resetShader(); // Drop back to standard p5 rendering for micro-powder
+            resetShader();
             noStroke();
             for (let i = dustParticles.length - 1; i >= 0; i--) {
                 let p = dustParticles[i];
                 
-                // Physics: breath wind, air resistance & gentle gravity settling
                 p.x += p.vx + (currentWind * 3.5);
                 p.y += p.vy;
-                p.vx *= 0.94;
-                p.vy = (p.vy + 0.06) * 0.96;
-                p.life -= 4; // Fade out
+                
+                if (p.isSpore) {
+                    // Spore behavior: bioluminescent swarming
+                    p.vx += (noise(p.x * 0.02, p.y * 0.02, frameCount * 0.01) - 0.5) * 0.6;
+                    p.vy += (noise(p.x * 0.02 + 1000, p.y * 0.02, frameCount * 0.01) - 0.5) * 0.6;
+                    p.vx *= 0.92;
+                    p.vy *= 0.92;
+                    p.life -= 0.8;
+                } else {
+                    p.vx *= 0.94;
+                    p.vy = (p.vy + 0.06) * 0.96;
+                    p.life -= 3.5;
+                }
                 
                 if (p.life <= 0) {
                     dustParticles.splice(i, 1);
                     continue;
                 }
                 
-                let alpha = (p.life / p.maxLife) * 140;
+                let alpha = (p.life / p.maxLife) * (p.isSpore ? 210 : 140);
                 push();
                 translate(p.x, p.y, p.z);
-                fill(32, 30, 32, alpha);
+                if (p.isSpore) {
+                    fill(180, 245, 90, alpha);
+                } else {
+                    fill(32, 30, 32, alpha);
+                }
                 ellipse(0, 0, p.size, p.size);
                 pop();
             }
         }
 
-        // 4. Render Spatial Air Wand Cursor Reticle
+        // 7. Render Spatial Air Wand Cursor Reticle
         if (airWandCursor.active && (Date.now() - airWandCursor.lastSeen < 4000)) {
             resetShader();
             push();
             translate(airWandCursor.x, airWandCursor.y, 10);
             
             if (airWandCursor.isDrawing) {
-                // Drawing active indicator: subtle carbon halo
                 noFill();
                 stroke(40, 38, 40, 180);
                 strokeWeight(1.8);
@@ -1788,7 +2331,6 @@ function draw() {
                 noStroke();
                 ellipse(0, 0, 4, 4);
             } else {
-                // Aiming / hovering: elegant charcoal stylus pointer
                 noFill();
                 stroke(60, 58, 62, 160);
                 strokeWeight(1.2);
@@ -1822,11 +2364,31 @@ function windowResized() {
 
 // Paper Styles
 const paperStyles = [
-    { name: "Archival Cotton 300g", tooth: "Cold-Pressed", badge: "Cotton 300g (Heavy Grain)" },
-    { name: "Smooth Bristol Board", tooth: "Hot-Pressed", badge: "Bristol (Fine Satin)" },
-    { name: "Raw Mulberry Washi", tooth: "Washi Fiber", badge: "Washi (Organic Flecks)" }
+    { name: "Archival Cotton 300g", tooth: "Cold-Pressed", badge: "Cotton 300g (Heavy Grain)", color: [0.93, 0.91, 0.87] },
+    { name: "Smooth Bristol Board", tooth: "Hot-Pressed", badge: "Bristol (Fine Satin)", color: [0.98, 0.98, 0.96] },
+    { name: "Raw Mulberry Washi", tooth: "Washi Fiber", badge: "Washi (Organic Flecks)", color: [0.94, 0.91, 0.84] },
+    { name: "Toned Tan Sketchpad", tooth: "Tan Tone", badge: "Toned Tan", color: [0.75, 0.65, 0.55] },
+    { name: "Cool Grey Sketchpad", tooth: "Grey Tone", badge: "Toned Grey", color: [0.60, 0.62, 0.65] }
 ];
 let currentPaperIdx = 0;
+
+// Lighting Styles
+const lightingStyles = [
+    { name: "Dynamic Hand", mode: "dynamic", color: [1.0, 0.98, 0.95], icon: "🔦" },
+    { name: "Warm Studio", mode: "fixed", pos: [0.5, 0.8], color: [1.0, 0.85, 0.70], icon: "💡" },
+    { name: "Cool Window", mode: "fixed", pos: [0.1, 0.6], color: [0.8, 0.9, 1.0], icon: "🪟" }
+];
+let currentLightingIdx = 0;
+
+function cycleLighting() {
+    currentLightingIdx = (currentLightingIdx + 1) % lightingStyles.length;
+    let l = lightingStyles[currentLightingIdx];
+    
+    let btnLight = document.getElementById('btn-light-cycle');
+    if (btnLight) btnLight.innerHTML = `<span>${l.icon}</span> Light: ${l.name}`;
+    
+    showToast(`Studio lighting: ${l.name}`, l.icon, 2000);
+}
 
 function cyclePaperGrain() {
     currentPaperIdx = (currentPaperIdx + 1) % paperStyles.length;
@@ -1923,6 +2485,47 @@ function setAppModeView(mode, notify = true) {
     }
 }
 
+function setDrawTool(toolName) {
+    currentTool = toolName;
+    const charcoalBtn = document.getElementById('tool-charcoal');
+    const eraserBtn = document.getElementById('tool-eraser');
+    const emberBtn = document.getElementById('tool-ember');
+    const waterBtn = document.getElementById('tool-water');
+    
+    if (charcoalBtn) charcoalBtn.classList.toggle('active', toolName === 'charcoal');
+    if (eraserBtn) eraserBtn.classList.toggle('active', toolName === 'eraser');
+    if (emberBtn) emberBtn.classList.toggle('active', toolName === 'ember');
+    if (waterBtn) waterBtn.classList.toggle('active', toolName === 'water');
+    
+    if (toolName === 'charcoal') {
+        document.body.style.cursor = 'crosshair';
+        showToast("Charcoal Stick: Sketch carbon strokes across paper tooth", "✏️", 1800);
+    } else if (toolName === 'eraser') {
+        document.body.style.cursor = 'cell';
+        showToast("Kneaded Eraser: Lift pigment & prune living branches", "🧽", 1800);
+    } else if (toolName === 'ember') {
+        document.body.style.cursor = 'crosshair';
+        showToast("Ember: Scorch & burn away charcoal strokes directly", "🔥", 1800);
+    } else if (toolName === 'water') {
+        document.body.style.cursor = 'crosshair';
+        showToast("Water: Bleed & dissolve strokes into soft wash", "💧", 1800);
+    }
+}
+
+function cycleTint() {
+    const keys = Object.keys(charcoalTints);
+    let idx = keys.indexOf(currentTint);
+    idx = (idx + 1) % keys.length;
+    currentTint = keys[idx];
+    
+    let t = charcoalTints[currentTint];
+    let btn = document.getElementById('btn-tint-cycle');
+    if (btn) {
+        btn.innerHTML = `<span id="tint-icon">${t.icon}</span> ${t.name}`;
+    }
+    showToast(`Pigment changed to ${t.name}`, t.icon, 1800);
+}
+
 function setMode(mode) {
     setAppModeView(mode);
 }
@@ -1937,15 +2540,38 @@ function undoLastStroke() {
 }
 
 function triggerManualSmudge() {
+    let mx = mouseX - width/2;
+    let my = mouseY - height/2;
+    let dx = (Math.random() - 0.5) * 40;
+    let dy = (Math.random() - 0.5) * 40;
+    
+    applySmudge(mx, my, dx, dy);
     triggerSmudgeBurst();
     showToast("Smudged carbon particles across the grain", "💨", 2000);
 }
 
 function triggerBlowDust() {
     currentWind = 1.0;
-    scatterFineDust(0, 0, 1.0);
     if (navigator.vibrate) navigator.vibrate(50);
     showToast("Carbon powder lifted with breath", "🌬️", 2000);
+}
+
+function applyFixative() {
+    let lockedCount = 0;
+    freehandStrokes.forEach(stroke => {
+        if (!stroke.fixed) {
+            stroke.fixed = true;
+            lockedCount++;
+        }
+    });
+    if (lockedCount > 0) {
+        showToast("Fixative sprayed. Current layers locked.", "🌫️", 2000);
+        if (!isAudioMuted && audioStarted) {
+            playCharcoalFrictionSound(40.0, 1.0); // simple sound feedback
+        }
+    } else {
+        showToast("No new strokes to fix.", "🌫️", 1500);
+    }
 }
 
 function toggleShortcutsModal() {
@@ -1977,17 +2603,48 @@ window.addEventListener('keydown', (e) => {
         e.preventDefault();
         undoLastStroke();
     }
+    // Tools
+    else if (e.key.toLowerCase() === 'c' && !e.shiftKey) {
+        setDrawTool('charcoal');
+    }
+    else if (e.key.toLowerCase() === 'x') {
+        setDrawTool('eraser');
+    }
+    else if (e.key.toLowerCase() === 'm') {
+        setDrawTool('ember');
+    }
+    else if (e.key.toLowerCase() === 'w') {
+        setDrawTool('water');
+    }
+    else if (e.key.toLowerCase() === 't') {
+        cycleTint();
+    }
+    else if (e.key.toLowerCase() === 'p') {
+        cyclePaperGrain();
+    }
+    // Lighting
+    else if (e.key.toLowerCase() === 'l') {
+        cycleLighting();
+    }
+    // Fixative
+    else if (e.key.toLowerCase() === 'f') {
+        applyFixative();
+    }
     // Smudge
     else if (e.key.toLowerCase() === 's') {
         triggerManualSmudge();
     }
     // Blow dust
-    else if (e.key === ' ' || e.key.toLowerCase() === 'b') {
+    else if (e.key === ' ') {
         e.preventDefault();
         triggerBlowDust();
     }
+    // Toggle Bio-Active
+    else if (e.key.toLowerCase() === 'b') {
+        toggleBioActivity();
+    }
     // Clear
-    else if (e.key.toLowerCase() === 'c') {
+    else if (e.key === 'Delete' || e.key === 'Backspace' || (e.key.toLowerCase() === 'c' && e.shiftKey)) {
         clearFreehand();
         showToast("Canvas cleared", "🗑️", 1800);
     }
@@ -2001,9 +2658,77 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-function clearFreehand() {
+function startTimelapsePlayback() {
+    if (freehandStrokes.length === 0) return;
+    
+    // Deep copy current strokes
+    playbackStrokesCache = JSON.parse(JSON.stringify(freehandStrokes));
+    
     freehandStrokes = [];
     dustParticles = [];
+    globalPointIndex = 0;
+    
+    isPlayingBack = true;
+    currentPlaybackStrokeIdx = 0;
+    currentPlaybackPointIdx = 0;
+    
+    // Auto-switch to fixed light for cinematic look if dynamic is on
+    if (lightingStyles[currentLightingIdx].mode === 'dynamic') {
+        currentLightingIdx = 1; // Warm Studio
+        let l = lightingStyles[currentLightingIdx];
+        let btnLight = document.getElementById('btn-light-cycle');
+        if (btnLight) btnLight.innerHTML = `<span>${l.icon}</span> Light: ${l.name}`;
+    }
+    
+    showToast("Cinematic Playback Started", "🎥", 3000);
+}
+
+function processPlayback() {
+    if (!isPlayingBack) return;
+    
+    for (let s = 0; s < playbackSpeed; s++) {
+        if (currentPlaybackStrokeIdx >= playbackStrokesCache.length) {
+            isPlayingBack = false;
+            showToast("Playback Complete", "✨", 2000);
+            return;
+        }
+        
+        let targetStroke = playbackStrokesCache[currentPlaybackStrokeIdx];
+        
+        if (freehandStrokes.length <= currentPlaybackStrokeIdx) {
+            let newStroke = [];
+            newStroke.tint = targetStroke.tint || 'black';
+            newStroke.fixed = targetStroke.fixed || false;
+            freehandStrokes.push(newStroke);
+        }
+        
+        if (currentPlaybackPointIdx < targetStroke.length) {
+            let pt = targetStroke[currentPlaybackPointIdx];
+            freehandStrokes[currentPlaybackStrokeIdx].push(pt);
+            
+            if (audioStarted && currentPlaybackPointIdx % 3 === 0) {
+                // Occasional light friction sound
+                playCharcoalFrictionSound(2.0, pt.pressure || 1.0);
+            }
+            
+            // Re-spawn dust if it was a heavy pressure or fast stroke
+            if (pt.pressure > 1.2 && random() > 0.8) {
+                spawnDust(pt.x, pt.y, random(-1, 1), random(-1, 1), pt.pressure);
+            }
+            
+            currentPlaybackPointIdx++;
+        } else {
+            currentPlaybackStrokeIdx++;
+            currentPlaybackPointIdx = 0;
+        }
+    }
+}
+
+function clearFreehand() {
+    isPlayingBack = false;
+    freehandStrokes = [];
+    dustParticles = [];
+    livingBranches = [];
     globalPointIndex = 0;
     showToast("Canvas cleared", "🗑️", 1800);
 }
