@@ -373,6 +373,10 @@
             <button class="preset-btn" onclick="setAnimal('butterfly')">Butterfly</button>
             <button class="preset-btn" onclick="setAnimal('dolphin')">Dolphin</button>
             <button class="preset-btn" onclick="setAnimal('bear')">Bear</button>
+            <button class="preset-btn" onclick="setAnimal('fox')">Fox</button>
+            <button class="preset-btn" onclick="setAnimal('lion')">Lion</button>
+            <button class="preset-btn" onclick="setAnimal('owl')">Owl</button>
+            <button class="preset-btn" onclick="setAnimal('turtle')">Turtle</button>
         </div>
         
         <!-- Freehand Studio Tools (Active in Freehand mode) -->
@@ -2006,6 +2010,18 @@ const animalShapes = {
     ],
     bear: [
         [-0.4, -0.2], [-0.5, -0.4], [-0.3, -0.5], [-0.1, -0.4], [0.3, -0.4], [0.5, -0.3], [0.6, -0.1], [0.7, 0.3], [0.5, 0.7], [0.3, 0.7], [0.2, 0.4], [-0.1, 0.4], [-0.2, 0.7], [-0.4, 0.7], [-0.5, 0.4], [-0.4, 0.1], [-0.4, -0.2]
+    ],
+    fox: [
+        [-0.4, -0.1], [-0.5, -0.4], [-0.3, -0.5], [-0.2, -0.2], [-0.1, -0.1], [0.2, -0.1], [0.5, -0.3], [0.7, 0.0], [0.4, 0.2], [0.1, 0.3], [-0.1, 0.6], [-0.2, 0.6], [-0.2, 0.3], [-0.4, 0.2], [-0.4, -0.1]
+    ],
+    lion: [
+        [-0.4, 0.2], [-0.5, -0.1], [-0.4, -0.4], [-0.1, -0.5], [0.2, -0.4], [0.4, -0.2], [0.7, -0.2], [0.8, -0.4], [0.9, -0.3], [0.7, 0.0], [0.5, 0.3], [0.4, 0.7], [0.2, 0.7], [0.2, 0.4], [0.0, 0.4], [-0.2, 0.7], [-0.4, 0.7], [-0.3, 0.3], [-0.4, 0.2]
+    ],
+    owl: [
+        [-0.2, -0.5], [-0.3, -0.7], [-0.1, -0.6], [0.1, -0.6], [0.3, -0.7], [0.2, -0.5], [0.4, -0.1], [0.3, 0.4], [0.1, 0.6], [0.2, 0.8], [0.0, 0.7], [-0.2, 0.8], [-0.1, 0.6], [-0.3, 0.4], [-0.4, -0.1], [-0.2, -0.5]
+    ],
+    turtle: [
+        [-0.5, 0.0], [-0.3, -0.4], [0.3, -0.4], [0.5, 0.0], [0.8, 0.1], [0.7, 0.3], [0.5, 0.2], [0.4, 0.6], [0.2, 0.5], [0.0, 0.3], [-0.2, 0.5], [-0.4, 0.6], [-0.5, 0.2], [-0.5, 0.0]
     ]
 };
 
@@ -2069,10 +2085,10 @@ function generateAnimalPath(animalId, length, bounds) {
             pts[i].tx = dx / dist;
             pts[i].ty = dy / dist;
         } else {
-            pts[i].tx = 1;
-            pts[i].ty = 0;
+            pts[i].tx = 1; pts[i].ty = 0;
         }
     }
+    
     return pts;
 }
 
@@ -2117,6 +2133,7 @@ function drawStroke(points, limit) {
     }
     endShape();
 }
+
 
 function draw() {
     if (isRemote) return;
